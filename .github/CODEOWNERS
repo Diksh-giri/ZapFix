@@ -1,0 +1,22 @@
+# Replace @person-a and @person-b with GitHub handles once docs/TEAM_SPLIT.md is agreed.
+# GitHub will then request reviews automatically. Uncomment the lines below.
+
+# Lane A: safety core
+# /db/                     @person-a
+# /server/connections/     @person-a
+# /server/runs/            @person-a
+# /server/adapters/        @person-a
+# /server/audit/           @person-a
+
+# Lane B: experience and intelligence
+# /app/                    @person-b
+# /components/             @person-b
+# /server/diagnosis/       @person-b
+# /server/workflows/       @person-b
+# /evals/                  @person-b
+
+# Safety-critical: BOTH must review (see docs/WORKING_AGREEMENT.md)
+# /db/policies/            @person-a @person-b
+# /server/changes/         @person-a @person-b
+# /server/proposals/       @person-a @person-b
+# /server/diagnosis/ai/    @person-a @person-b
