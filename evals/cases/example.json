@@ -1,0 +1,28 @@
+[
+  {
+    "id": "missing-email-one-alternative",
+    "note": "Worked example. Replace with cases built from RECORDED real app errors (T24).",
+    "input": {
+      "error": { "category_hint": "missing_field", "code": "required", "message": "Missing required field: attendee_email", "field": "attendee_email", "retryable": false, "outcome": "not_executed" },
+      "config": { "attendee_email": { "kind": "mapped", "source": "email" } },
+      "resolved": { "attendee_email": "" },
+      "triggerData": { "email": "", "contact_email": "ana@example.com" },
+      "triggerSchema": { "fields": [ { "key": "email", "label": "Email", "type": "email" }, { "key": "contact_email", "label": "Contact email", "type": "email" } ] },
+      "actionFields": [ { "key": "attendee_email", "label": "Attendee email", "required": true, "type": "email" } ]
+    },
+    "expected": { "category": "missing_required_field", "supported": true, "candidateIds": ["map:attendee_email:contact_email"], "ceiling": "high" }
+  },
+  {
+    "id": "unknown-error-is-unsupported",
+    "note": "The correct answer is NO fix.",
+    "input": {
+      "error": { "category_hint": "unavailable", "code": "backend_error", "message": "Service unavailable", "retryable": true, "outcome": "failed" },
+      "config": {},
+      "resolved": {},
+      "triggerData": {},
+      "triggerSchema": { "fields": [ { "key": "email", "label": "Email", "type": "email" } ] },
+      "actionFields": []
+    },
+    "expected": { "category": "unsupported", "supported": false, "candidateIds": [], "ceiling": "low" }
+  }
+]
