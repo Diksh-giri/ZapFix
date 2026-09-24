@@ -4,6 +4,7 @@ import type { AppAdapter, ExecuteResult } from "@/server/adapters/types";
 import { createRunEngine } from "@/server/runs/orchestrator";
 import { createMemoryRunStore, type MemoryRunStore } from "@/server/runs/memory-store";
 import type { ActionConfig } from "@/lib/schemas/workflow-config";
+import type { AccessTokenResult } from "@/server/connections/access-token";
 
 const STALE = 90_000;
 const TIMEOUT = 10_000;
@@ -24,15 +25,26 @@ const goodConfig: ActionConfig = {
 let now = new Date("2026-09-24T12:00:00Z");
 let store: MemoryRunStore;
 let token = "good-token";
+let tokenResult: AccessTokenResult | undefined;
 let rateLimited = false;
+let rateCalls: Array<[string, string]> = [];
+let emitted: Array<{ type: string; runId: string; payload: Record<string, unknown> }> = [];
+const tokenCalls: Array<[string, string]> = [];
 
 function engine(adapter: AppAdapter = fakeAdapter) {
   return createRunEngine({
     store,
     getAdapter: () => adapter,
-    getAccessToken: async () => token,
-    checkRateLimit: async () => {
+    getAccessToken: async (connectionId, userId) => {
+      tokenCalls.push([connectionId, userId]);
+      return tokenResult ?? { ok: true, accessToken: token };
+    },
+    checkRateLimit: async (userId, bucket) => {
+      rateCalls.push([userId, bucket]);
       if (rateLimited) throw Object.assign(new Error("rate"), { code: "rate_limited" });
+    },
+    recordEvent: async (e) => {
+      emitted.push(e);
     },
     now: () => now,
     appCallTimeoutMs: TIMEOUT,
@@ -43,7 +55,11 @@ function engine(adapter: AppAdapter = fakeAdapter) {
 beforeEach(() => {
   now = new Date("2026-09-24T12:00:00Z");
   token = "good-token";
+  tokenResult = undefined;
   rateLimited = false;
+  rateCalls = [];
+  emitted = [];
+  tokenCalls.length = 0;
   store = createMemoryRunStore();
   store.seedWorkflow({
     id: "wf-1",
@@ -237,5 +253,70 @@ describe("retryFailedStep (safety tests 4 and 11)", () => {
     const execute = vi.fn(fakeAdapter.execute.bind(fakeAdapter));
     await engine({ ...fakeAdapter, execute }).startRun("wf-1", USER, { ...goodTrigger, email: "" });
     expect(execute).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("connection problems (T9 getAccessToken results)", () => {
+  it("asks the token getter for this workflow's connection and this user", async () => {
+    await engine().startRun("wf-1", USER, goodTrigger);
+    expect(tokenCalls).toEqual([["conn-1", USER]]);
+  });
+
+  it("records an expired-connection failure without calling the app when the tester must reconnect", async () => {
+    tokenResult = { ok: false, reason: "needs_reconnect", code: "invalid_grant" };
+    const execute = vi.fn(fakeAdapter.execute.bind(fakeAdapter));
+    const run = await engine({ ...fakeAdapter, execute }).startRun("wf-1", USER, goodTrigger);
+    expect(execute).not.toHaveBeenCalled();
+    expect(run.status).toBe("failed");
+    expect(store.attempts(run.id)[0]).toMatchObject({
+      status: "failed",
+      errorStd: { category_hint: "auth", code: "invalid_grant", retryable: false, outcome: "not_executed" },
+    });
+  });
+
+  it("records a temporary failure, not an auth failure, when the token could not be renewed right now", async () => {
+    tokenResult = { ok: false, reason: "temporarily_unavailable", code: "temporary" };
+    const run = await engine().startRun("wf-1", USER, goodTrigger);
+    expect(store.attempts(run.id)[0]).toMatchObject({
+      status: "failed",
+      errorStd: { category_hint: "unavailable", retryable: true, outcome: "not_executed" },
+    });
+  });
+
+  it("requires a connection on the workflow", async () => {
+    store.setConnectionStatus("wf-1", "none");
+    await expect(engine().startRun("wf-1", USER, goodTrigger)).rejects.toMatchObject({ code: "no_active_connection" });
+  });
+});
+
+describe("rate limits and events", () => {
+  it("uses the runs bucket for a first run and the retries bucket for a retry", async () => {
+    const run = await engine().startRun("wf-1", USER, { ...goodTrigger, email: "" });
+    await engine().retryFailedStep(run.id, USER);
+    expect(rateCalls).toEqual([[USER, "runs"], [USER, "retries"]]);
+  });
+
+  it("records retry_started and retry_finished with ids and enums only", async () => {
+    const run = await engine().startRun("wf-1", USER, { ...goodTrigger, email: "" });
+    await engine().retryFailedStep(run.id, USER);
+    expect(emitted.map((e) => e.type)).toEqual(["retry_started", "retry_finished"]);
+    expect(emitted[1]).toMatchObject({ runId: run.id, payload: { attempt_no: 2, outcome: "failed" } });
+  });
+
+  it("does not let a failing event write break a run", async () => {
+    const e = createRunEngine({
+      store,
+      getAdapter: () => fakeAdapter,
+      getAccessToken: async () => ({ ok: true, accessToken: "t" }),
+      checkRateLimit: async () => {},
+      recordEvent: async () => {
+        throw new Error("db down");
+      },
+      now: () => now,
+      appCallTimeoutMs: TIMEOUT,
+      staleRunningMs: STALE,
+    });
+    const run = await e.startRun("wf-1", USER, { ...goodTrigger, email: "" });
+    await expect(e.retryFailedStep(run.id, USER)).resolves.toBeDefined();
   });
 });

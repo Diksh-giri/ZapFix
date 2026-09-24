@@ -1,3 +1,5 @@
-import { notImplemented } from "@/server/http/handler";
+import { apiRoute } from "@/server/http/handler";
+import { parseId } from "@/server/http/ids";
+import { getRunEngine } from "@/server/runs";
 
-export const GET = notImplemented("T12", "GET /api/runs/{id}");
+export const GET = apiRoute({}, async ({ user, params }) => getRunEngine().getRun(parseId(params.id, "Run"), user.id));

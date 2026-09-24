@@ -4,7 +4,7 @@ import type { AttemptRecord, NewAttempt, RunRecord, RunStore, WorkflowRecord } f
 
 /** TEST DOUBLE for RunStore. Mirrors the DB's one-running / one-succeeded rules. */
 export interface MemoryRunStore extends RunStore {
-  seedWorkflow(w: Omit<WorkflowRecord, "appId"> & { appId?: WorkflowRecord["appId"] }): void;
+  seedWorkflow(w: Omit<WorkflowRecord, "appId" | "connectionId"> & Partial<Pick<WorkflowRecord, "appId" | "connectionId">>): void;
   setConnectionStatus(workflowId: string, status: string): void;
   updateWorkflowConfig(workflowId: string, config: ActionConfig): void;
   markChangeApplied(runId: string, at: Date): void;
@@ -26,7 +26,7 @@ export function createMemoryRunStore(): MemoryRunStore {
 
   return {
     seedWorkflow(w) {
-      workflows.set(w.id, { appId: "google_calendar", ...w });
+      workflows.set(w.id, { appId: "google_calendar", connectionId: "conn-1", ...w });
     },
     setConnectionStatus(id, status) {
       const w = workflows.get(id);

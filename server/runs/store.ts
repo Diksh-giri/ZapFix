@@ -7,6 +7,7 @@ export interface WorkflowRecord {
   id: string;
   userId: string;
   appId: AppId;
+  connectionId: string | null;
   actionKey: string;
   config: ActionConfig;
   triggerFields: string[];

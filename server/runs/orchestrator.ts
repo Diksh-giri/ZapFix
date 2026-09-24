@@ -2,6 +2,8 @@ import { AppError } from "@/lib/errors";
 import type { AppId, AttemptStatus } from "@/lib/types";
 import type { TriggerData } from "@/lib/schemas/workflow-config";
 import type { AppAdapter } from "@/server/adapters/types";
+import type { RateBucket } from "@/server/audit/events";
+import type { AccessTokenResult } from "@/server/connections/access-token";
 import { maskQuotedValues } from "@/server/diagnosis/ai/payload";
 import { resolveConfig } from "@/server/workflows/resolve";
 import { assertRetryAllowed, effectiveStatus, idempotencyKey } from "./engine";
@@ -12,10 +14,17 @@ const STEP = "action";
 export interface RunEngineDeps {
   store: RunStore;
   getAdapter: (app: AppId) => AppAdapter;
-  /** T9 supplies the real one. Returns a decrypted token; never log or store it. */
-  getAccessToken: (userId: string, appId: AppId) => Promise<string>;
-  /** T15 supplies the real one. Throws AppError("rate_limited") when over the limit. */
-  checkRateLimit: (userId: string, bucket: "run" | "retry") => Promise<void>;
+  /** T9's getAccessToken, bound to its dependencies. Returns a typed result; never log the token. */
+  getAccessToken: (connectionId: string, userId: string) => Promise<AccessTokenResult>;
+  /** T15's checkRateLimit, bound to its store. Throws AppError("rate_limited") over the limit. */
+  checkRateLimit: (userId: string, bucket: RateBucket) => Promise<void>;
+  /** Optional, best effort: a failing event write never breaks a run. Payloads hold ids and enums only. */
+  recordEvent?: (e: {
+    userId: string;
+    runId: string;
+    type: "retry_started" | "retry_finished";
+    payload: { attempt_no: number; outcome?: AttemptStatus };
+  }) => Promise<void>;
   now: () => Date;
   appCallTimeoutMs: number;
   staleRunningMs: number;
@@ -74,20 +83,33 @@ export function createRunEngine(deps: RunEngineDeps) {
       await store.updateRun(run.id, { status, finishedAt });
     };
 
-    let token: string;
+    let tokenResult: AccessTokenResult;
     try {
-      token = await deps.getAccessToken(wf.userId, wf.appId);
+      tokenResult = await deps.getAccessToken(wf.connectionId ?? "", wf.userId);
     } catch {
-      const errorStd = {
-        category_hint: "auth",
-        code: "token_unavailable",
-        message: "Could not get a valid access token for this connection.",
-        retryable: false,
-        outcome: "not_executed",
-      };
+      tokenResult = { ok: false, reason: "needs_reconnect", code: "token_unavailable" };
+    }
+    if (!tokenResult.ok) {
+      const errorStd =
+        tokenResult.reason === "temporarily_unavailable"
+          ? {
+              category_hint: "unavailable",
+              code: "token_refresh_unavailable",
+              message: "We could not refresh the connection right now. Try again in a moment.",
+              retryable: true,
+              outcome: "not_executed",
+            }
+          : {
+              category_hint: "auth",
+              code: tokenResult.code,
+              message: "The connection to this app has expired or was removed. Reconnect it and try again.",
+              retryable: false,
+              outcome: "not_executed",
+            };
       await finish("failed", { errorStd, errorRaw: { code: errorStd.code, message: errorStd.message } });
       return (await store.getRun(run.id)) ?? run;
     }
+    const token = tokenResult.accessToken;
 
     const result = await deps.getAdapter(wf.appId).execute(
       wf.actionKey,
@@ -111,15 +133,23 @@ export function createRunEngine(deps: RunEngineDeps) {
   async function loadRunnableWorkflow(workflowId: string, userId: string): Promise<WorkflowRecord> {
     const wf = await store.getWorkflow(workflowId);
     if (!wf || wf.userId !== userId) throw new AppError("not_found", "Workflow not found.");
-    if (wf.connectionStatus !== "active") {
+    if (!wf.connectionId || wf.connectionStatus !== "active") {
       throw new AppError("no_active_connection", "Reconnect this app before running the workflow.");
     }
     return wf;
   }
 
+  const emit = async (e: Parameters<NonNullable<RunEngineDeps["recordEvent"]>>[0]) => {
+    try {
+      await deps.recordEvent?.(e);
+    } catch {
+      // events are best effort
+    }
+  };
+
   return {
     async startRun(workflowId: string, userId: string, triggerData: TriggerData): Promise<RunRecord> {
-      await deps.checkRateLimit(userId, "run");
+      await deps.checkRateLimit(userId, "runs");
       const wf = await loadRunnableWorkflow(workflowId, userId);
       const missing = wf.triggerFields.filter((k) => typeof triggerData[k] !== "string");
       if (missing.length > 0) {
@@ -143,7 +173,7 @@ export function createRunEngine(deps: RunEngineDeps) {
       opts: { confirmUncertain?: boolean } = {},
     ): Promise<RunRecord> {
       const run = await loadOwnedRun(runId, userId);
-      await deps.checkRateLimit(userId, "retry");
+      await deps.checkRateLimit(userId, "retries");
       const attempts = await reconcile(runId);
       const previous = attempts[attempts.length - 1];
       assertRetryAllowed(previous, deps.now(), deps.staleRunningMs, { confirmUncertain: opts.confirmUncertain });
@@ -153,7 +183,10 @@ export function createRunEngine(deps: RunEngineDeps) {
       const changeAt = await store.lastChangeAppliedAt(runId);
       const changeApplied = changeAt !== undefined && changeAt > previous.startedAt;
 
-      const after = await executeAttempt(run, wf, previous.attemptNo + 1);
+      const attemptNo = previous.attemptNo + 1;
+      await emit({ userId, runId, type: "retry_started", payload: { attempt_no: attemptNo } });
+      const after = await executeAttempt(run, wf, attemptNo);
+      await emit({ userId, runId, type: "retry_finished", payload: { attempt_no: attemptNo, outcome: after.status } });
       if (changeApplied && after.status !== "succeeded") {
         await store.updateRun(runId, { repairCount: run.repairCount + 1 });
         return (await store.getRun(runId)) ?? after;
