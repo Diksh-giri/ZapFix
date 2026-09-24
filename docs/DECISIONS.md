@@ -6,7 +6,7 @@ and the TDD must be updated in the same PR. Full reasoning: TDD sections 6 and 2
 | # | Topic | Decision |
 | --- | --- | --- |
 | 001 | Integrations | Fully real integrations (not simulated) |
-| 002 | Apps | Google Calendar, Slack, Google Sheets. Gmail deferred |
+| 002 | Apps | Google Calendar, Slack, Google Sheets, Gmail (send email), Google Drive (create file). Gmail and Drive added 2026-09-24 by agreement of both developers; scopes `gmail.send` and `drive.file` only (no restricted scopes) |
 | 003 | Templates | Small set, SHOULD HAVE, after the core flow; includes deliberately broken ones |
 | 004 | Trigger | Built-in form / sample-data trigger |
 | 005 | Editing proposals | Approve, reject, or pick from valid options. No free text |

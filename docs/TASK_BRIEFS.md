@@ -97,7 +97,7 @@ Owners: **D** = Dikshyant (safety core + AI client), **J** = James (experience, 
 **Watch out:** never trust `user_id` from the body; use the session user. Transforms are a closed list (`date_to_rfc3339`, `trim`, `lowercase`).
 
 ### T11. Google Calendar adapter and real error fixtures (D, L)
-**Depends on:** T8, T9. **Status:** Not started (stub in `server/adapters/google-calendar/index.ts`).
+**Depends on:** T8, T9. **Status:** Adapter code done and unit-tested (2026-09-24): `execute("create_event")` with timeout, status-to-`StandardError` mapping, uncertain outcome on timeout or dropped connection, masked messages. Duplicate protection checked against Google's docs: `events.insert` accepts a client-supplied `id` (lowercase base32hex, 5 to 1024 chars; a repeat is `409 duplicate`), so the id is derived from run + step (not the attempt number) and a `409 duplicate` counts as success. Guests are not emailed (`sendUpdates=none`). Real fixtures recorded (2026-09-24) with a test account and saved, sanitized, under `tests/fixtures/google-calendar/` (success, empty_attendee_email, invalid_date_format, invalid_token); the 400 mapping is refined from them. Real findings: an empty attendee gives `400 invalid` \"Invalid attendee email.\" (the adapter maps it to `missing_field` + `attendee_email`); a bad date gives `400 badRequest` \"Bad Request\" with NO field (the adapter finds the one non-RFC 3339 date field itself). The existing missing-field rule fires on the real error. Handoff to James for T13 and T24: the expired-connection and invalid-format rules are still stubs; `tests/unit/calendar-fixtures-rules.test.ts` has `it.todo` items ready for them. Still to do: a real end-to-end event through the app (needs sign-in).
 **Goal:** create a real event; turn every failure into a `StandardError`; capture real error responses.
 **Build:**
 1. `execute("create_event", values, ctx)`: call Google Calendar events insert with `ctx.accessToken`; use `AbortController` with `ctx.timeoutMs`.
@@ -226,7 +226,11 @@ Owners: **D** = Dikshyant (safety core + AI client), **J** = James (experience, 
 ## Phase 6: More integrations (after Milestone 1: full loop on Calendar)
 
 ### T25. Slack (D, M)
+**Status:** Adapter code done and unit-tested (2026-09-24): `post_message` via `chat.postMessage`, Slack's `ok:false` error codes mapped to `StandardError` (auth, not_found on the channel, missing/invalid text or channel, rate limit, unavailable with outcome `uncertain`), timeout or dropped connection `uncertain`, no duplicate protection (Slack has none; checked against its docs). Still to do: record real fixtures with `scripts/record-slack-fixtures.ts` (needs a test workspace and channel), confirm the empty-channel and empty-text responses against them, then rules coverage, eval cases and an e2e test (James for the rules and evals).
 Use T9's machinery with provider `slack` (OAuth, bot token, encrypted). Adapter `post_message` (channel, text). Slack has no native duplicate protection: rely on the one-success and uncertain-outcome rules. Map real error codes to `StandardError` (channel not found, not in channel, revoked/invalid token -> auth). Save fixtures, add rules coverage and eval cases, add an e2e test. **Acceptance:** full loop on Slack.
+
+### Gmail and Drive adapters (D)
+**Status:** Adapter code done and unit-tested (2026-09-24), sharing `server/adapters/google-http.ts` with Calendar. Gmail `send_email` (`users.messages.send`, scope `gmail.send`; a line break in the recipient or subject is refused to stop header injection) and Drive `create_file` (multipart `files.create`, scope `drive.file`). Neither API has usable idempotency (Gmail none; Drive only via a separate `generateIds` call that returns fresh ids), so both rely on the one-success and uncertain-outcome rules. `gmail` and `google_drive` are now in `APP_IDS` and the registry; both use the `google` provider connection. Still to do: real fixtures with a test account (recorder scripts in the style of Calendar), rules coverage and eval cases (James), an e2e test.
 
 ### T26. Google Sheets (J, M)
 Reuse the Google connection. Adapter `append_row` (spreadsheet id, sheet name, values). Sheets is forgiving about formats, so invalid-format cases are mainly covered by Calendar; still capture real errors (permission, wrong sheet name). Fixtures, rules, eval cases, e2e. **Acceptance:** full loop on Sheets.
@@ -326,7 +330,7 @@ Any failure rolls back everything. **Restore** is a similar single transaction (
 - Metric definitions (saved as SQL in T15): approvals with a change (always 100% by constraint); unapproved changes = workflows with `last_modified_by = 'debugger'` and no matching `config_changes`; time from `failure_opened` event to `approvals.decided_at`; recovery rate = runs with a debugger change whose latest attempt succeeded; retries per resolved run = `step_attempts` count; restore success from `config_changes` status and restore events.
 
 ## G. Open items that affect tasks (see `docs/DECISIONS.md` for what is locked)
-- **Pending human decisions:** Google plan beyond Testing mode (production unverified, verification, or managed connection service); whether Gmail and Drive join the MVP (currently **no**); whether T15 moves to James.
+- **Pending human decisions:** Google plan beyond Testing mode (production unverified, verification, or managed connection service); ~~whether Gmail and Drive join the MVP~~ (decided 2026-09-24: **yes**, `send_email` and `create_file`, see decision 002); whether T15 moves to James.
 - Exact Google and Slack **scopes** (T9, T25, T26): bring the list for approval first.
 - **Data retention** period for runs, trigger data, raw errors, events (proposal: test period plus 30 days).
 - Vendor terms: AI provider data retention, Vercel plan use, Supabase free-tier limits.
