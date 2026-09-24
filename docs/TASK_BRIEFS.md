@@ -109,7 +109,7 @@ Owners: **D** = Dikshyant (safety core + AI client), **J** = James (experience, 
 **Watch out:** do not guess Google's error shapes; record real ones. Use only your own test calendar.
 
 ### T12. Run Engine (D, L)
-**Depends on:** T6, T10, T11. **Status:** Partly: `idempotencyKey`, `effectiveStatus`, `assertRetryAllowed` done and tested.
+**Depends on:** T6, T10, T11. **Status:** Partly: guards done; orchestration (`startRun`, `getRun` with reconcile-on-read, `retryFailedStep`) done and unit-tested in `server/runs/orchestrator.ts` against an in-memory store. Still to do: Drizzle store, the three routes, T9 token getter and T15 rate limit wiring, and where to persist the retry `Idempotency-Key` (needs a column decision).
 **Start here:** `server/runs/engine.ts`, `db/schema/index.ts` (`runs`, `stepAttempts`), `server/workflows/resolve.ts`, `app/api/workflows/[id]/runs`, `app/api/runs/[id]`, `app/api/runs/[id]/retry`.
 **Build:**
 1. `startRun(workflowId, userId, triggerData)`: validate trigger data against the workflow's `trigger_schema`; require an `active` connection (else `no_active_connection`); insert `runs` (`running`); call `executeAttempt`.
