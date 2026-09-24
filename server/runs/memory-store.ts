@@ -83,10 +83,6 @@ export function createMemoryRunStore(): MemoryRunStore {
       const a = attempts.find((x) => x.id === id);
       if (a) Object.assign(a, patch);
     },
-    async findAttemptByRequestKey(runId, requestKey) {
-      const a = attempts.find((x) => x.runId === runId && x.requestKey === requestKey);
-      return a ? { ...a } : undefined;
-    },
     async lastChangeAppliedAt(runId) {
       return changes.get(runId);
     },

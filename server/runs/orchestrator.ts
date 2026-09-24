@@ -56,7 +56,6 @@ export function createRunEngine(deps: RunEngineDeps) {
     run: RunRecord,
     wf: WorkflowRecord,
     attemptNo: number,
-    requestKey?: string,
   ): Promise<RunRecord> {
     const attempt = await store.insertAttempt({
       runId: run.id,
@@ -65,7 +64,6 @@ export function createRunEngine(deps: RunEngineDeps) {
       status: "running",
       configSnapshot: wf.config,
       idempotencyKey: idempotencyKey(run.id, STEP, attemptNo),
-      requestKey,
       startedAt: deps.now(),
     });
     await store.updateRun(run.id, { status: "running", finishedAt: undefined });
@@ -142,11 +140,9 @@ export function createRunEngine(deps: RunEngineDeps) {
     async retryFailedStep(
       runId: string,
       userId: string,
-      opts: { idempotencyKey: string; confirmUncertain?: boolean },
+      opts: { confirmUncertain?: boolean } = {},
     ): Promise<RunRecord> {
       const run = await loadOwnedRun(runId, userId);
-      if (await store.findAttemptByRequestKey(runId, opts.idempotencyKey)) return run;
-
       await deps.checkRateLimit(userId, "retry");
       const attempts = await reconcile(runId);
       const previous = attempts[attempts.length - 1];
@@ -157,7 +153,7 @@ export function createRunEngine(deps: RunEngineDeps) {
       const changeAt = await store.lastChangeAppliedAt(runId);
       const changeApplied = changeAt !== undefined && changeAt > previous.startedAt;
 
-      const after = await executeAttempt(run, wf, previous.attemptNo + 1, opts.idempotencyKey);
+      const after = await executeAttempt(run, wf, previous.attemptNo + 1);
       if (changeApplied && after.status !== "succeeded") {
         await store.updateRun(runId, { repairCount: run.repairCount + 1 });
         return (await store.getRun(runId)) ?? after;

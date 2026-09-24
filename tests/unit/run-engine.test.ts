@@ -156,7 +156,7 @@ describe("retryFailedStep (safety tests 4 and 11)", () => {
   it("retries with the CURRENT config and the SAME saved trigger data", async () => {
     const run = await failedRun();
     store.updateWorkflowConfig("wf-1", { ...goodConfig, attendee_email: { kind: "static", value: "fixed@example.com" } });
-    const retried = await engine().retryFailedStep(run.id, USER, { idempotencyKey: "k1" });
+    const retried = await engine().retryFailedStep(run.id, USER, {});
     expect(retried.status).toBe("succeeded");
     const attempts = store.attempts(run.id);
     expect(attempts.map((a) => a.attemptNo)).toEqual([1, 2]);
@@ -164,18 +164,11 @@ describe("retryFailedStep (safety tests 4 and 11)", () => {
     expect(store.getRunSync(run.id)?.triggerData).toEqual({ ...goodTrigger, email: "" });
   });
 
-  it("a repeated Idempotency-Key returns the original attempt and creates no new one", async () => {
-    const run = await failedRun();
-    await engine().retryFailedStep(run.id, USER, { idempotencyKey: "k1" });
-    await engine().retryFailedStep(run.id, USER, { idempotencyKey: "k1" });
-    expect(store.attempts(run.id)).toHaveLength(2);
-  });
-
   it("a double click creates exactly one attempt", async () => {
     const run = await failedRun();
     const results = await Promise.allSettled([
-      engine().retryFailedStep(run.id, USER, { idempotencyKey: "a" }),
-      engine().retryFailedStep(run.id, USER, { idempotencyKey: "b" }),
+      engine().retryFailedStep(run.id, USER, {}),
+      engine().retryFailedStep(run.id, USER, {}),
     ]);
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     expect(store.attempts(run.id)).toHaveLength(2);
@@ -183,7 +176,7 @@ describe("retryFailedStep (safety tests 4 and 11)", () => {
 
   it("never runs against a succeeded step", async () => {
     const run = await engine().startRun("wf-1", USER, goodTrigger);
-    await expect(engine().retryFailedStep(run.id, USER, { idempotencyKey: "k" })).rejects.toMatchObject({
+    await expect(engine().retryFailedStep(run.id, USER, {})).rejects.toMatchObject({
       code: "already_succeeded",
     });
     expect(store.attempts(run.id).filter((a) => a.status === "succeeded")).toHaveLength(1);
@@ -201,17 +194,17 @@ describe("retryFailedStep (safety tests 4 and 11)", () => {
     };
     const run = await engine(timeout).startRun("wf-1", USER, goodTrigger);
     expect(store.attempts(run.id)[0]?.status).toBe("uncertain");
-    await expect(engine().retryFailedStep(run.id, USER, { idempotencyKey: "k" })).rejects.toMatchObject({
+    await expect(engine().retryFailedStep(run.id, USER, {})).rejects.toMatchObject({
       code: "uncertain_needs_confirmation",
     });
-    const ok = await engine().retryFailedStep(run.id, USER, { idempotencyKey: "k2", confirmUncertain: true });
+    const ok = await engine().retryFailedStep(run.id, USER, { confirmUncertain: true });
     expect(ok.status).toBe("succeeded");
   });
 
   it("checks the rate limit before a retry", async () => {
     const run = await failedRun();
     rateLimited = true;
-    await expect(engine().retryFailedStep(run.id, USER, { idempotencyKey: "k" })).rejects.toThrow();
+    await expect(engine().retryFailedStep(run.id, USER, {})).rejects.toThrow();
     expect(store.attempts(run.id)).toHaveLength(1);
   });
 
@@ -219,13 +212,13 @@ describe("retryFailedStep (safety tests 4 and 11)", () => {
     const run = await failedRun();
 
     // retry with NO applied change that fails again: no increment
-    await engine().retryFailedStep(run.id, USER, { idempotencyKey: "r1" });
+    await engine().retryFailedStep(run.id, USER, {});
     expect(store.getRunSync(run.id)?.repairCount).toBe(0);
 
     // applied change, retry still fails: increment
     store.markChangeApplied(run.id, new Date(now.getTime() + 1));
     now = new Date(now.getTime() + 1000);
-    await engine().retryFailedStep(run.id, USER, { idempotencyKey: "r2" });
+    await engine().retryFailedStep(run.id, USER, {});
     expect(store.getRunSync(run.id)?.repairCount).toBe(1);
   });
 
@@ -235,7 +228,7 @@ describe("retryFailedStep (safety tests 4 and 11)", () => {
     now = new Date(now.getTime() + 1000);
     store.markChangeApplied(run.id, now);
     now = new Date(now.getTime() + 1000);
-    await engine().retryFailedStep(run.id, USER, { idempotencyKey: "r1" });
+    await engine().retryFailedStep(run.id, USER, {});
     expect(store.getRunSync(run.id)?.repairCount).toBe(0);
     expect(store.getRunSync(run.id)?.status).toBe("succeeded");
   });
