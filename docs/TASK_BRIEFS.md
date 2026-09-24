@@ -97,7 +97,7 @@ Owners: **D** = Dikshyant (safety core + AI client), **J** = James (experience, 
 **Watch out:** never trust `user_id` from the body; use the session user. Transforms are a closed list (`date_to_rfc3339`, `trim`, `lowercase`).
 
 ### T11. Google Calendar adapter and real error fixtures (D, L)
-**Depends on:** T8, T9. **Status:** Not started (stub in `server/adapters/google-calendar/index.ts`).
+**Depends on:** T8, T9. **Status:** Adapter code done and unit-tested (2026-09-24): `execute("create_event")` with timeout, status-to-`StandardError` mapping, uncertain outcome on timeout or dropped connection, masked messages. Duplicate protection checked against Google's docs: `events.insert` accepts a client-supplied `id` (lowercase base32hex, 5 to 1024 chars; a repeat is `409 duplicate`), so the id is derived from run + step (not the attempt number) and a `409 duplicate` counts as success. Guests are not emailed (`sendUpdates=none`). Still to do: run `scripts/record-calendar-fixtures.ts` once with a test account to save real responses under `tests/fixtures/google-calendar/`, refine the provisional 400 mapping from them, and hand them to James for T13 and T24.
 **Goal:** create a real event; turn every failure into a `StandardError`; capture real error responses.
 **Build:**
 1. `execute("create_event", values, ctx)`: call Google Calendar events insert with `ctx.accessToken`; use `AbortController` with `ctx.timeoutMs`.
