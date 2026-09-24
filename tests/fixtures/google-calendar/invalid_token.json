@@ -1,0 +1,40 @@
+{
+  "scenario": "invalid_token",
+  "description": "An expired or revoked access token.",
+  "recorded_at": "2026-09-24",
+  "request_shape": {
+    "title": "provided",
+    "start": "provided",
+    "end": "provided",
+    "attendee_email": "provided"
+  },
+  "response": {
+    "status": 401,
+    "body": {
+      "error": {
+        "code": 401,
+        "message": "Request had invalid authentication credentials. Expected OAuth 2 access token, login cookie or other valid authentication credential. See https://developers.google.com/identity/sign-in/web/devconsole-project.",
+        "errors": [
+          {
+            "message": "Invalid Credentials",
+            "domain": "global",
+            "reason": "authError",
+            "location": "Authorization",
+            "locationType": "header"
+          }
+        ],
+        "status": "UNAUTHENTICATED"
+      }
+    }
+  },
+  "mapped": {
+    "ok": false,
+    "error": {
+      "code": "authError",
+      "message": "Invalid Credentials",
+      "retryable": false,
+      "outcome": "not_executed",
+      "category_hint": "auth"
+    }
+  }
+}

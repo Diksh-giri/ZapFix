@@ -1,0 +1,38 @@
+{
+  "scenario": "empty_attendee_email",
+  "description": "The attendee email is empty (missing required field).",
+  "recorded_at": "2026-09-24",
+  "request_shape": {
+    "title": "provided",
+    "start": "provided",
+    "end": "provided",
+    "attendee_email": "empty"
+  },
+  "response": {
+    "status": 400,
+    "body": {
+      "error": {
+        "errors": [
+          {
+            "domain": "global",
+            "reason": "invalid",
+            "message": "Invalid attendee email."
+          }
+        ],
+        "code": 400,
+        "message": "Invalid attendee email."
+      }
+    }
+  },
+  "mapped": {
+    "ok": false,
+    "error": {
+      "code": "invalid",
+      "message": "Invalid attendee email.",
+      "retryable": false,
+      "outcome": "not_executed",
+      "category_hint": "missing_field",
+      "field": "attendee_email"
+    }
+  }
+}
