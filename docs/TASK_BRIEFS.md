@@ -226,6 +226,7 @@ Owners: **D** = Dikshyant (safety core + AI client), **J** = James (experience, 
 ## Phase 6: More integrations (after Milestone 1: full loop on Calendar)
 
 ### T25. Slack (D, M)
+**Status:** Adapter code done and unit-tested (2026-09-24): `post_message` via `chat.postMessage`, Slack's `ok:false` error codes mapped to `StandardError` (auth, not_found on the channel, missing/invalid text or channel, rate limit, unavailable with outcome `uncertain`), timeout or dropped connection `uncertain`, no duplicate protection (Slack has none; checked against its docs). Still to do: record real fixtures with `scripts/record-slack-fixtures.ts` (needs a test workspace and channel), confirm the empty-channel and empty-text responses against them, then rules coverage, eval cases and an e2e test (James for the rules and evals).
 Use T9's machinery with provider `slack` (OAuth, bot token, encrypted). Adapter `post_message` (channel, text). Slack has no native duplicate protection: rely on the one-success and uncertain-outcome rules. Map real error codes to `StandardError` (channel not found, not in channel, revoked/invalid token -> auth). Save fixtures, add rules coverage and eval cases, add an e2e test. **Acceptance:** full loop on Slack.
 
 ### Gmail and Drive adapters (D)
