@@ -88,6 +88,7 @@ insert into private.connection_secrets(connection_id,ciphertext) values ('800000
 grant select on all tables in schema public to authenticated;
 
 set app.uid = '00000000-0000-0000-0000-0000000000a2';
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000a2","role":"authenticated"}', false);
 set role authenticated;
 insert into t.results select '7a other user sees NO workflows', (select count(*) from workflows) = 0;
 insert into t.results select '7b other user sees NO runs', (select count(*) from runs) = 0;
@@ -95,13 +96,17 @@ insert into t.results select '7c other user sees NO step attempts (via join)', (
 insert into t.results select '7d other user sees NO approvals', (select count(*) from approvals) = 0;
 insert into t.results select '7e other user sees NO connections', (select count(*) from connections) = 0;
 select t.expect_error('7f authenticated role cannot read token secrets', $q$ select * from private.connection_secrets $q$);
-select t.expect_error('7g authenticated role cannot write workflows directly (writes go through the server)', $q$ update workflows set name='hacked' $q$);
 reset role;
 
 set app.uid = '00000000-0000-0000-0000-0000000000a1';
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000a1","role":"authenticated"}', false);
 set role authenticated;
 insert into t.results select '7h owner DOES see their own workflow', (select count(*) from workflows) = 1;
 insert into t.results select '7i owner sees their own step attempts', (select count(*) from step_attempts) >= 1;
+-- 7g: even the OWNER cannot write directly. Plain Postgres blocks with an error; Supabase's default grants
+-- let the statement run but row-level security changes 0 rows. Either way the data must be unchanged.
+do $$ begin update workflows set name='hacked'; exception when others then null; end $$;
+insert into t.results select '7g authenticated role cannot write workflows directly (writes go through the server)', (select count(*) from workflows where name = 'hacked') = 0 and (select count(*) from workflows) = 1;
 reset role;
 
 -- ---------- summary ----------

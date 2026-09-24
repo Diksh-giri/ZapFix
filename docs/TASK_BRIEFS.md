@@ -42,7 +42,7 @@ Owners: **D** = Dikshyant (safety core + AI client), **J** = James (experience, 
 ## Phase 2: Database
 
 ### T5. Create the tables on real Supabase (D, M)
-**Depends on:** T2. **Status:** Partly: schema and migration written, not applied.
+**Depends on:** T2. **Status:** Done (2026-09-24): migrations applied to the dev project; `npm run db:check` shows 12 tables. Use the Session pooler connection string in `DATABASE_URL` (the direct host is IPv6-only and often unreachable).
 **Start here:** `db/schema/index.ts`, `db/migrations/0000_init.sql`, `drizzle.config.ts`.
 **Build:**
 1. `DATABASE_URL=<direct connection string> npm run db:migrate` against the **dev** project.
@@ -52,7 +52,7 @@ Owners: **D** = Dikshyant (safety core + AI client), **J** = James (experience, 
 **Watch out:** the `private` schema must exist before secrets are written. Do not change table or column names without updating the appendices and the other developer.
 
 ### T6. Turn on the safety rules (D, M)
-**Depends on:** T5. **Status:** Partly: SQL written and tested on plain Postgres with a stubbed `auth` schema; never run on Supabase.
+**Depends on:** T5. **Status:** Done (2026-09-24): safety rules are migration `0001_integrity_and_rls.sql`; all 28 checks pass on the scratch Supabase project; applied to dev.
 **Start here:** `db/policies/001_integrity.sql`, `tests/db/safety.sql`.
 **Build:**
 1. On the **scratch** Supabase project, apply `001_integrity.sql` (as a custom Drizzle migration: `npx drizzle-kit generate --custom --name=integrity_and_rls`, paste the SQL, then migrate). Fix any Supabase-specific differences.
@@ -62,7 +62,7 @@ Owners: **D** = Dikshyant (safety core + AI client), **J** = James (experience, 
 **Watch out:** RLS is a **second** layer; the app server uses the service connection which bypasses it. Never remove the triggers to make something work.
 
 ### T7. Database test suite (D, M)
-**Depends on:** T6. **Status:** Partly: 28 checks exist; CI runs them on plain Postgres.
+**Depends on:** T6. **Status:** Done for the existing 28 checks (2026-09-24). They pass on plain Postgres (CI) and on scratch Supabase: apply migrations with `DATABASE_URL=<scratch> npm run db:migrate`, then `CONFIRM_SCRATCH=yes DB_URL=<scratch> tests/db/run.sh` (needs `psql`; scratch only, it truncates `auth.users`). Keep adding a check per new integrity rule.
 **Build:** add a check to `tests/db/safety.sql` for every new integrity rule you add; document how to run against Supabase scratch; keep the CI `db-safety` job green.
 **Acceptance:** checks run in CI and locally; each new rule has a passing and a failing case.
 

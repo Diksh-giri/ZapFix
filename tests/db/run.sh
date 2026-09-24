@@ -5,11 +5,26 @@
 # (never against production: it truncates auth.users).
 set -euo pipefail
 : "${DB_URL:?Set DB_URL to a scratch database}"
+# Any non-local database (for example a Supabase project) needs an explicit CONFIRM_SCRATCH=yes.
+case "$DB_URL" in
+  *@localhost:*|*@localhost/*|*@127.0.0.1:*|*@127.0.0.1/*) ;;
+  *)
+    if [ "${CONFIRM_SCRATCH:-}" != "yes" ]; then
+      echo "Refusing to run: these tests TRUNCATE auth.users. Only use a throwaway scratch database," >&2
+      echo "then re-run with CONFIRM_SCRATCH=yes." >&2
+      exit 1
+    fi ;;
+esac
 cd "$(dirname "$0")/../.."
 P="psql $DB_URL -v ON_ERROR_STOP=1 -q"
-$P -f tests/db/auth_stub.sql
-for f in db/migrations/*.sql; do $P -f "$f"; done
-$P -f db/policies/001_integrity.sql
+# A real Supabase project already has auth.users, and its schema comes from `npm run db:migrate`
+# (which includes the safety rules, 0001_integrity_and_rls.sql). Only plain Postgres needs the stub.
+if [ "$($P -t -A -c "select to_regclass('auth.users') is not null")" = "t" ]; then
+  echo "Supabase-style database detected: running safety tests only (migrations must already be applied)."
+else
+  $P -f tests/db/auth_stub.sql
+  for f in db/migrations/*.sql; do $P -f "$f"; done
+fi
 out=$($P -t -A -F '|' -f tests/db/safety.sql)
 echo "$out" | grep -E '^(PASS|FAIL)\|' | sed 's/|/  /'
 failed=$(echo "$out" | tail -1 | cut -d'|' -f2)
