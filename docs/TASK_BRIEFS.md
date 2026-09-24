@@ -228,6 +228,9 @@ Owners: **D** = Dikshyant (safety core + AI client), **J** = James (experience, 
 ### T25. Slack (D, M)
 Use T9's machinery with provider `slack` (OAuth, bot token, encrypted). Adapter `post_message` (channel, text). Slack has no native duplicate protection: rely on the one-success and uncertain-outcome rules. Map real error codes to `StandardError` (channel not found, not in channel, revoked/invalid token -> auth). Save fixtures, add rules coverage and eval cases, add an e2e test. **Acceptance:** full loop on Slack.
 
+### Gmail and Drive adapters (D)
+**Status:** Adapter code done and unit-tested (2026-09-24), sharing `server/adapters/google-http.ts` with Calendar. Gmail `send_email` (`users.messages.send`, scope `gmail.send`; a line break in the recipient or subject is refused to stop header injection) and Drive `create_file` (multipart `files.create`, scope `drive.file`). Neither API has usable idempotency (Gmail none; Drive only via a separate `generateIds` call that returns fresh ids), so both rely on the one-success and uncertain-outcome rules. `gmail` and `google_drive` are now in `APP_IDS` and the registry; both use the `google` provider connection. Still to do: real fixtures with a test account (recorder scripts in the style of Calendar), rules coverage and eval cases (James), an e2e test.
+
 ### T26. Google Sheets (J, M)
 Reuse the Google connection. Adapter `append_row` (spreadsheet id, sheet name, values). Sheets is forgiving about formats, so invalid-format cases are mainly covered by Calendar; still capture real errors (permission, wrong sheet name). Fixtures, rules, eval cases, e2e. **Acceptance:** full loop on Sheets.
 
@@ -326,7 +329,7 @@ Any failure rolls back everything. **Restore** is a similar single transaction (
 - Metric definitions (saved as SQL in T15): approvals with a change (always 100% by constraint); unapproved changes = workflows with `last_modified_by = 'debugger'` and no matching `config_changes`; time from `failure_opened` event to `approvals.decided_at`; recovery rate = runs with a debugger change whose latest attempt succeeded; retries per resolved run = `step_attempts` count; restore success from `config_changes` status and restore events.
 
 ## G. Open items that affect tasks (see `docs/DECISIONS.md` for what is locked)
-- **Pending human decisions:** Google plan beyond Testing mode (production unverified, verification, or managed connection service); whether Gmail and Drive join the MVP (currently **no**); whether T15 moves to James.
+- **Pending human decisions:** Google plan beyond Testing mode (production unverified, verification, or managed connection service); ~~whether Gmail and Drive join the MVP~~ (decided 2026-09-24: **yes**, `send_email` and `create_file`, see decision 002); whether T15 moves to James.
 - Exact Google and Slack **scopes** (T9, T25, T26): bring the list for approval first.
 - **Data retention** period for runs, trigger data, raw errors, events (proposal: test period plus 30 days).
 - Vendor terms: AI provider data retention, Vercel plan use, Supabase free-tier limits.
