@@ -33,4 +33,4 @@ export const ConfirmRequest = z.object({
 
 export const RestoreRequest = z.object({ confirmOverwrite: z.boolean().optional() });
 
-export const EventRequest = z.object({ type: z.enum(["failure_opened", "summary_viewed"]) });
+export const EventRequest = z.object({ type: z.enum(["failure_opened", "summary_viewed"]), runId: z.string().uuid() });
