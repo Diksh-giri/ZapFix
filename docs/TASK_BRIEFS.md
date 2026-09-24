@@ -71,7 +71,7 @@ Owners: **D** = Dikshyant (safety core + AI client), **J** = James (experience, 
 ## Phase 3: Backend
 
 ### T9. Connections: Google (and later Slack) (D, XL)
-**Depends on:** T3, T5. **Status:** Not started. `server/connections/crypto.ts` (encrypt/decrypt) is done and tested.
+**Depends on:** T3, T5. **Status:** Code done and unit-tested (2026-09-24): OAuth state + PKCE cookie, encrypted token bundle, `getAccessToken` with quiet renewal, Google and Slack clients, connections service, Drizzle store, and the four routes. Still to do: run the store against a real database, and a real end-to-end connect for Google and Slack (needs T3 sign-in). Scopes approved: Calendar `calendar.events.owned`, Sheets `spreadsheets`, `gmail.send`, `drive.file`, `openid email`; Slack bot `chat:write`, `chat:write.public`. Slack needs an HTTPS redirect URL.
 **Goal:** a tester connects Google; the encrypted token is stored; the Run Engine can get a fresh access token; expiry is detected and surfaced.
 **Start here:** `server/connections/secrets.ts` (TODO), `server/connections/crypto.ts`, `app/api/connections/**`, `db/schema/index.ts` (`connections`, `connectionSecrets`), `.env.example`.
 **Build:**
