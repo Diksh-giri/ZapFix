@@ -80,7 +80,7 @@ The **fake adapter** (`server/adapters/fake`) lets screens, rules and tests work
 
 ## 7. Locked decisions that affect code every day
 (Full list: `docs/DECISIONS.md`. Changing one needs BOTH developers to agree and the docs updated in the same PR.)
-- **Real integrations**, not simulations. Apps: Google Calendar, Slack, Google Sheets. **Gmail and Drive are NOT in the MVP.** (Pending decisions may change this; check `docs/DECISIONS.md`.)
+- **Real integrations**, not simulations. Apps: Google Calendar, Slack, Google Sheets. **Gmail (send email) and Drive (create file) joined the MVP on 2026-09-24** (see `docs/DECISIONS.md`, decision 002).
 - Trigger is a **built-in form**. One trigger + one action per workflow.
 - **Rules decide what is allowed; the AI explains and picks from that list.** The AI can never propose anything off the list. Invalid AI output is **rejected, never repaired**; retry once, then manual mode.
 - Confidence is **High / Medium / Low**, never a percentage. Rules set the ceiling; the AI may only lower it. Low or no candidates = **no fix offered**.

@@ -21,7 +21,7 @@ export const PROVIDERS = ["google", "slack"] as const;
 export type Provider = (typeof PROVIDERS)[number];
 
 /** Apps (adapters) the MVP supports. Build order: Calendar, Slack, Sheets (Decision #034). */
-export const APP_IDS = ["google_calendar", "slack", "google_sheets"] as const;
+export const APP_IDS = ["google_calendar", "slack", "google_sheets", "gmail", "google_drive"] as const;
 export type AppId = (typeof APP_IDS)[number];
 
 export function confidenceRank(c: Confidence): number {

@@ -3,6 +3,8 @@ import type { AppAdapter } from "./types";
 import { googleCalendarAdapter } from "./google-calendar";
 import { slackAdapter } from "./slack";
 import { googleSheetsAdapter } from "./google-sheets";
+import { gmailAdapter } from "./gmail";
+import { googleDriveAdapter } from "./google-drive";
 import { AppError } from "@/lib/errors";
 
 /** The production registry. The fake adapter is deliberately NOT here; tests inject it. */
@@ -10,6 +12,8 @@ const adapters: Record<AppId, AppAdapter> = {
   google_calendar: googleCalendarAdapter,
   slack: slackAdapter,
   google_sheets: googleSheetsAdapter,
+  gmail: gmailAdapter,
+  google_drive: googleDriveAdapter,
 };
 
 export function getAdapter(app: AppId): AppAdapter {

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { StandardError } from "@/lib/schemas/standard-error";
-import { maskQuotedValues } from "@/server/diagnosis/ai/payload";
+import { baseGoogleError, describeGoogleError, googleRequest, type GoogleErrorBody } from "../google-http";
 import type { AppAdapter, ExecuteContext, ExecuteResult } from "../types";
 import { missingRequiredMappings } from "../types";
 
@@ -54,10 +54,6 @@ const FIELD_HINTS: Array<[RegExp, string]> = [
   [/\b(summary|title)\b/i, "title"],
 ];
 
-interface GoogleErrorBody {
-  error?: { message?: string; errors?: Array<{ reason?: string; message?: string; location?: string }> };
-}
-
 const fail = (requestSummary: Record<string, string>, error: StandardError): ExecuteResult => ({
   ok: false,
   requestSummary,
@@ -78,32 +74,26 @@ function mapHttpError(
   accessToken: string,
   values: Record<string, string>,
 ): StandardError {
-  const first = body?.error?.errors?.[0];
-  const reason = first?.reason;
-  const rawMessage = first?.message ?? body?.error?.message ?? `Google Calendar answered with HTTP ${status}.`;
-  const scrubbed = accessToken ? rawMessage.split(accessToken).join("[token]") : rawMessage;
-  const message = maskQuotedValues(scrubbed.replace(/Bearer\s+\S+/gi, "Bearer [token]")).slice(0, 500);
-  const code = (reason ?? `http_${status}`).slice(0, 120);
-  const base = { code, message, retryable: false, outcome: "not_executed" as const };
+  const info = describeGoogleError(status, body, accessToken);
+  const known = baseGoogleError(info);
+  if (known) return known;
 
-  if (status === 401) return { ...base, category_hint: "auth" };
-  if (status === 429 || (status === 403 && /ratelimit|dailylimit/i.test(reason ?? ""))) {
-    return { ...base, category_hint: "rate_limit", retryable: true };
-  }
-  if (status === 403) return { ...base, category_hint: "auth" };
-  if (status === 404) return { ...base, category_hint: "not_found" };
-  if (status >= 500) return { ...base, category_hint: "unavailable", retryable: true, outcome: "uncertain" };
-  if (status === 400) {
-    const field = fieldFrom(first?.location, rawMessage) ?? badDatetimeField(values);
-    // Google says "Invalid attendee email" for an empty attendee (recorded fixture). A field it rejected
-    // that we sent empty is a missing field.
-    const missing =
-      reason === "required" ||
-      /\b(required|missing|empty|blank)\b/i.test(rawMessage) ||
-      (field !== undefined && (values[field] ?? "") === "");
-    return { ...base, category_hint: missing ? "missing_field" : "invalid_value", ...(field ? { field } : {}) };
-  }
-  return { ...base, category_hint: "unknown" };
+  // 400: the meaning is specific to Calendar.
+  const field = fieldFrom(info.location, info.rawMessage) ?? badDatetimeField(values);
+  // Google says "Invalid attendee email" for an empty attendee (recorded fixture). A field it rejected
+  // that we sent empty is a missing field.
+  const missing =
+    info.reason === "required" ||
+    /\b(required|missing|empty|blank)\b/i.test(info.rawMessage) ||
+    (field !== undefined && (values[field] ?? "") === "");
+  return {
+    code: info.code,
+    message: info.message,
+    retryable: false,
+    outcome: "not_executed",
+    category_hint: missing ? "missing_field" : "invalid_value",
+    ...(field ? { field } : {}),
+  };
 }
 
 export function createGoogleCalendarAdapter(fetchFn: typeof fetch = fetch): AppAdapter {
@@ -141,15 +131,10 @@ export function createGoogleCalendarAdapter(fetchFn: typeof fetch = fetch): AppA
       }
 
       const id = eventIdFor(ctx.idempotencyKey);
-      const controller = new AbortController();
-      let timedOut = false;
-      const timer = setTimeout(() => {
-        timedOut = true;
-        controller.abort();
-      }, ctx.timeoutMs);
-
-      try {
-        const res = await fetchFn(`${ENDPOINT}?sendUpdates=none`, {
+      const sent = await googleRequest(
+        fetchFn,
+        `${ENDPOINT}?sendUpdates=none`,
+        {
           method: "POST",
           headers: { authorization: `Bearer ${ctx.accessToken}`, "content-type": "application/json" },
           body: JSON.stringify({
@@ -159,33 +144,26 @@ export function createGoogleCalendarAdapter(fetchFn: typeof fetch = fetch): AppA
             end: { dateTime: values.end ?? "" },
             attendees: [{ email: values.attendee_email ?? "" }],
           }),
-          signal: controller.signal,
-        });
-        const body = (await res.json().catch(() => undefined)) as (GoogleErrorBody & { id?: string }) | undefined;
+        },
+        ctx.timeoutMs,
+        "Google Calendar",
+      );
+      if (!sent.ok) return fail(summary, sent.error);
 
-        if (res.ok) {
-          if (typeof body?.id === "string" && body.id) return { ok: true, externalRef: body.id, requestSummary: summary };
-          return fail(summary, {
-            category_hint: "unknown", code: "bad_response", message: "Google answered without an event id.",
-            retryable: true, outcome: "uncertain",
-          });
-        }
-        // 409 duplicate: an earlier attempt already created this exact event.
-        if (res.status === 409 && body?.error?.errors?.[0]?.reason === "duplicate") {
-          return { ok: true, externalRef: id, requestSummary: summary };
-        }
-        return fail(summary, mapHttpError(res.status, body, ctx.accessToken, values));
-      } catch {
+      const { res } = sent;
+      const body = sent.body as (GoogleErrorBody & { id?: string }) | undefined;
+      if (res.ok) {
+        if (typeof body?.id === "string" && body.id) return { ok: true, externalRef: body.id, requestSummary: summary };
         return fail(summary, {
-          category_hint: "unavailable",
-          code: timedOut ? "timeout" : "network_error",
-          message: timedOut ? "Google Calendar did not answer in time." : "The connection to Google Calendar was interrupted.",
-          retryable: true,
-          outcome: "uncertain",
+          category_hint: "unknown", code: "bad_response", message: "Google answered without an event id.",
+          retryable: true, outcome: "uncertain",
         });
-      } finally {
-        clearTimeout(timer);
       }
+      // 409 duplicate: an earlier attempt already created this exact event.
+      if (res.status === 409 && body?.error?.errors?.[0]?.reason === "duplicate") {
+        return { ok: true, externalRef: id, requestSummary: summary };
+      }
+      return fail(summary, mapHttpError(res.status, body, ctx.accessToken, values));
     },
   };
 }
