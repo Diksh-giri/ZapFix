@@ -75,13 +75,17 @@ describe("buildAuthUrl", () => {
   });
 });
 
+function idToken(payload: object) {
+  return `header.${Buffer.from(JSON.stringify(payload)).toString("base64url")}.signature`;
+}
+
 describe("exchangeCode", () => {
   it("posts the code and PKCE verifier to Google's token endpoint and returns a token bundle", async () => {
     const fetchFn = vi.fn().mockResolvedValue(
       json({ access_token: "a1", refresh_token: "r1", expires_in: 3599, scope: "openid email", token_type: "Bearer" }),
     );
     const client = createGoogleClient(cfg, fetchFn, () => now);
-    const bundle = await client.exchangeCode("the-code", "the-verifier");
+    const { bundle } = await client.exchangeCode("the-code", "the-verifier");
 
     expect(fetchFn.mock.calls[0]?.[0]).toBe("https://oauth2.googleapis.com/token");
     const body = bodyOf(fetchFn.mock.calls[0]!);
@@ -99,6 +103,27 @@ describe("exchangeCode", () => {
       expiresAt: new Date(now.getTime() + 3_599_000).toISOString(),
       scope: "openid email",
     });
+  });
+
+  it("reads the account email from the sign-in token, and never stores the sign-in token itself", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(
+      json({
+        access_token: "a1", refresh_token: "r1", expires_in: 3599, scope: "openid email", token_type: "Bearer",
+        id_token: idToken({ email: "tester@example.com", email_verified: true }),
+      }),
+    );
+    const out = await createGoogleClient(cfg, fetchFn, () => now).exchangeCode("c", "v");
+    expect(out.accountLabel).toBe("tester@example.com");
+    expect(JSON.stringify(out.bundle)).not.toContain("id_token");
+  });
+
+  it("has no account label when the sign-in token is missing or unreadable", async () => {
+    for (const extra of [{}, { id_token: "garbage" }, { id_token: idToken({ sub: "1" }) }]) {
+      const fetchFn = vi.fn().mockResolvedValue(
+        json({ access_token: "a1", refresh_token: "r1", expires_in: 3599, scope: "openid", token_type: "Bearer", ...extra }),
+      );
+      expect((await createGoogleClient(cfg, fetchFn, () => now).exchangeCode("c", "v")).accountLabel).toBeNull();
+    }
   });
 
   it("fails with a plain message and no secrets when Google rejects the code", async () => {

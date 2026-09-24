@@ -47,7 +47,7 @@ export function createGoogleClient(
 
   return {
     /** Swap the one-time code for tokens. Throws a plain Error (no secrets) on any failure. */
-    async exchangeCode(code: string, codeVerifier: string): Promise<TokenBundle> {
+    async exchangeCode(code: string, codeVerifier: string): Promise<{ bundle: TokenBundle; accountLabel: string | null }> {
       let res: Response;
       try {
         res = await post(TOKEN_URL, {
@@ -64,7 +64,7 @@ export function createGoogleClient(
       const body: unknown = await res.json().catch(() => undefined);
       if (!res.ok) throw new Error(`Google did not accept the connection (HTTP ${res.status}).`);
       try {
-        return bundleFromTokenResponse(body, now());
+        return { bundle: bundleFromTokenResponse(body, now()), accountLabel: emailFromIdToken(body) };
       } catch {
         throw new Error("Google's reply was missing a token. Please try connecting again.");
       }
@@ -97,4 +97,19 @@ export function createGoogleClient(
       }
     },
   };
+}
+
+/**
+ * The account email, read from the sign-in token Google returns in the same response. It is only
+ * used as a display label, so it is decoded but not stored, and any problem just means "no label".
+ */
+function emailFromIdToken(response: unknown): string | null {
+  try {
+    const idToken = (response as { id_token?: unknown }).id_token;
+    if (typeof idToken !== "string") return null;
+    const payload = JSON.parse(Buffer.from(idToken.split(".")[1] ?? "", "base64url").toString("utf8")) as { email?: unknown };
+    return typeof payload.email === "string" ? payload.email : null;
+  } catch {
+    return null;
+  }
 }
