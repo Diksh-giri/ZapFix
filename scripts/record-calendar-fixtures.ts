@@ -1,18 +1,87 @@
+import { execFileSync } from "node:child_process";
+import { createHash, randomBytes } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
+import { loadEnvLocal } from "../db/connection";
 import { createGoogleCalendarAdapter } from "../server/adapters/google-calendar";
 import { sanitizeGoogleBody } from "../server/adapters/google-calendar/sanitize";
 
 /**
  * Records REAL Google Calendar responses as sanitized fixtures (T11, step 5). Run it yourself, on a TEST calendar:
- *   GOOGLE_TEST_ACCESS_TOKEN=<short-lived token with the calendar.events.owned scope> npx tsx scripts/record-calendar-fixtures.ts
- * The token is used for this command only. It is never written to a file, and the sanitizer removes it (and emails,
- * quoted values and personal event fields) from everything saved. Review tests/fixtures/google-calendar/*.json before committing.
- * It creates one real event on the primary calendar and deletes it again.
+ *   npx tsx scripts/record-calendar-fixtures.ts
+ * It opens Google's consent page (uses GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET from .env.local, never printed),
+ * you click Allow with your TEST account, and it catches the return on http://localhost:3000 (stop the dev server first).
+ * The token stays in memory, is never written to a file, and is revoked at the end. The sanitizer removes tokens,
+ * emails, quoted values and personal event fields from everything saved. Review tests/fixtures/google-calendar/*.json
+ * before committing. It creates one real event on the primary calendar and deletes it again.
+ * Alternative: set GOOGLE_TEST_ACCESS_TOKEN for this command to use a token you already have.
  */
-const token = process.env.GOOGLE_TEST_ACCESS_TOKEN;
-if (!token) {
-  console.error("Set GOOGLE_TEST_ACCESS_TOKEN for this command (a short-lived access token from a TEST Google account).");
-  process.exit(1);
+const REDIRECT_URI = "http://localhost:3000/api/connections/google/callback";
+const SCOPE = "https://www.googleapis.com/auth/calendar.events.owned";
+
+async function getToken(): Promise<{ token: string; revoke: () => Promise<void> }> {
+  if (process.env.GOOGLE_TEST_ACCESS_TOKEN) return { token: process.env.GOOGLE_TEST_ACCESS_TOKEN, revoke: async () => {} };
+
+  loadEnvLocal();
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    console.error("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set in .env.local.");
+    process.exit(1);
+  }
+
+  const state = randomBytes(24).toString("base64url");
+  const verifier = randomBytes(48).toString("base64url");
+  const challenge = createHash("sha256").update(verifier).digest("base64url");
+  const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+  for (const [k, v] of Object.entries({
+    client_id: clientId, redirect_uri: REDIRECT_URI, response_type: "code", scope: SCOPE,
+    state, code_challenge: challenge, code_challenge_method: "S256", prompt: "consent",
+  })) authUrl.searchParams.set(k, v);
+
+  const code = await new Promise<string>((resolve, reject) => {
+    const server = createServer((req, res) => {
+      const url = new URL(req.url ?? "/", "http://localhost:3000");
+      if (url.pathname !== "/api/connections/google/callback") {
+        res.writeHead(404).end();
+        return;
+      }
+      const ok = url.searchParams.get("state") === state && url.searchParams.get("code");
+      res.writeHead(ok ? 200 : 400, { "content-type": "text/plain" });
+      res.end(ok ? "Done. You can close this tab and go back to the terminal." : "That did not work. Go back to the terminal.");
+      server.close();
+      if (ok) resolve(url.searchParams.get("code")!);
+      else reject(new Error(`Google did not return a code (${url.searchParams.get("error") ?? "state mismatch"}).`));
+    });
+    server.on("error", (e) => reject(new Error(`Could not listen on port 3000 (${(e as NodeJS.ErrnoException).code}). Stop the dev server and try again.`)));
+    server.listen(3000, () => {
+      console.log("Opening Google's consent page. Sign in with your TEST account and click Allow...");
+      execFileSync("open", [authUrl.toString()]);
+    });
+    setTimeout(() => reject(new Error("Timed out waiting for consent (4 minutes).")), 240_000).unref();
+  });
+
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "authorization_code", code, code_verifier: verifier,
+      client_id: clientId, client_secret: clientSecret, redirect_uri: REDIRECT_URI,
+    }).toString(),
+  });
+  const body = (await res.json().catch(() => ({}))) as { access_token?: string };
+  if (!res.ok || !body.access_token) throw new Error(`Google did not accept the code (HTTP ${res.status}).`);
+  const token = body.access_token;
+  return {
+    token,
+    revoke: async () => {
+      await fetch("https://oauth2.googleapis.com/revoke", {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ token }).toString(),
+      }).catch(() => undefined);
+    },
+  };
 }
 
 const good = {
@@ -30,9 +99,10 @@ const scenarios: Array<{ name: string; description: string; values: Record<strin
 ];
 
 async function main() {
+  const { token, revoke } = await getToken();
   mkdirSync("tests/fixtures/google-calendar", { recursive: true });
   for (const s of scenarios) {
-    const useToken = s.token ?? token!;
+    const useToken = s.token ?? token;
     let captured: { status: number; body: unknown } | undefined;
     const capturingFetch: typeof fetch = async (input, init) => {
       const res = await fetch(input, init);
@@ -65,7 +135,11 @@ async function main() {
       console.log("  (test event deleted)");
     }
   }
-  console.log("\nDone. Review tests/fixtures/google-calendar/*.json for anything personal before you commit.");
+  await revoke();
+  console.log("\nDone (test token revoked). Review tests/fixtures/google-calendar/*.json for anything personal before you commit.");
 }
 
-void main();
+main().catch((e: Error) => {
+  console.error(`\n${e.message}`);
+  process.exit(1);
+});

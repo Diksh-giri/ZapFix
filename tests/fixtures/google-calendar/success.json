@@ -1,0 +1,27 @@
+{
+  "scenario": "success",
+  "description": "A valid event is created.",
+  "recorded_at": "2026-09-24",
+  "request_shape": {
+    "title": "provided",
+    "start": "provided",
+    "end": "provided",
+    "attendee_email": "provided"
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "kind": "calendar#event",
+      "etag": "\"[value]\"",
+      "id": "afk7o6hvd24fs4gj3mg0999oaakdqsgk",
+      "status": "confirmed",
+      "created": "2026-09-24T18:34:46.000Z",
+      "updated": "2026-09-24T18:34:46.934Z",
+      "sequence": 0,
+      "eventType": "default"
+    }
+  },
+  "mapped": {
+    "ok": true
+  }
+}

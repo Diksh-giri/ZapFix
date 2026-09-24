@@ -13,8 +13,8 @@ import { missingRequiredMappings } from "../types";
  * (lowercase base32hex, 5 to 1024 characters, unique per calendar; a repeat returns 409 duplicate). The id is
  * derived from run + step, NOT the attempt number, so a retry after an uncertain outcome cannot create a second event.
  *
- * TODO(T11): the mapping of 400 responses to missing_field / invalid_value and the field name is provisional.
- * Refine it from the real fixtures in tests/fixtures/google-calendar/ once they are recorded with a test account.
+ * The 400 mapping is grounded in real recorded responses (tests/fixtures/google-calendar/): an empty attendee
+ * gives "Invalid attendee email." and a bad date gives "Bad Request" with no field, so the field is found from the request.
  */
 const ENDPOINT = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
 const B32HEX = "0123456789abcdefghijklmnopqrstuv";
@@ -34,6 +34,17 @@ export function eventIdFor(idempotencyKey: string): string {
     }
   }
   return out;
+}
+
+const RFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+
+/**
+ * Google answers a badly formatted date with 400 "Bad Request" and names no field (recorded fixture).
+ * The request itself tells us: if exactly one date field is not RFC 3339, that is the field.
+ */
+function badDatetimeField(values: Record<string, string>): string | undefined {
+  const bad = ["start", "end"].filter((k) => (values[k] ?? "") !== "" && !RFC3339.test(values[k] ?? ""));
+  return bad.length === 1 ? bad[0] : undefined;
 }
 
 const FIELD_HINTS: Array<[RegExp, string]> = [
@@ -61,11 +72,17 @@ function fieldFrom(location: string | undefined, message: string): string | unde
   return undefined;
 }
 
-function mapHttpError(status: number, body: GoogleErrorBody | undefined, accessToken: string): StandardError {
+function mapHttpError(
+  status: number,
+  body: GoogleErrorBody | undefined,
+  accessToken: string,
+  values: Record<string, string>,
+): StandardError {
   const first = body?.error?.errors?.[0];
   const reason = first?.reason;
   const rawMessage = first?.message ?? body?.error?.message ?? `Google Calendar answered with HTTP ${status}.`;
-  const message = maskQuotedValues(rawMessage.split(accessToken).join("[token]").replace(/Bearer\s+\S+/gi, "Bearer [token]")).slice(0, 500);
+  const scrubbed = accessToken ? rawMessage.split(accessToken).join("[token]") : rawMessage;
+  const message = maskQuotedValues(scrubbed.replace(/Bearer\s+\S+/gi, "Bearer [token]")).slice(0, 500);
   const code = (reason ?? `http_${status}`).slice(0, 120);
   const base = { code, message, retryable: false, outcome: "not_executed" as const };
 
@@ -77,8 +94,13 @@ function mapHttpError(status: number, body: GoogleErrorBody | undefined, accessT
   if (status === 404) return { ...base, category_hint: "not_found" };
   if (status >= 500) return { ...base, category_hint: "unavailable", retryable: true, outcome: "uncertain" };
   if (status === 400) {
-    const field = fieldFrom(first?.location, rawMessage);
-    const missing = reason === "required" || /\b(required|missing|empty|blank)\b/i.test(rawMessage);
+    const field = fieldFrom(first?.location, rawMessage) ?? badDatetimeField(values);
+    // Google says "Invalid attendee email" for an empty attendee (recorded fixture). A field it rejected
+    // that we sent empty is a missing field.
+    const missing =
+      reason === "required" ||
+      /\b(required|missing|empty|blank)\b/i.test(rawMessage) ||
+      (field !== undefined && (values[field] ?? "") === "");
     return { ...base, category_hint: missing ? "missing_field" : "invalid_value", ...(field ? { field } : {}) };
   }
   return { ...base, category_hint: "unknown" };
@@ -152,7 +174,7 @@ export function createGoogleCalendarAdapter(fetchFn: typeof fetch = fetch): AppA
         if (res.status === 409 && body?.error?.errors?.[0]?.reason === "duplicate") {
           return { ok: true, externalRef: id, requestSummary: summary };
         }
-        return fail(summary, mapHttpError(res.status, body, ctx.accessToken));
+        return fail(summary, mapHttpError(res.status, body, ctx.accessToken, values));
       } catch {
         return fail(summary, {
           category_hint: "unavailable",

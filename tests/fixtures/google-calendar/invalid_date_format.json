@@ -1,0 +1,38 @@
+{
+  "scenario": "invalid_date_format",
+  "description": "The start date is 03/15/2026 instead of RFC 3339.",
+  "recorded_at": "2026-09-24",
+  "request_shape": {
+    "title": "provided",
+    "start": "provided",
+    "end": "provided",
+    "attendee_email": "provided"
+  },
+  "response": {
+    "status": 400,
+    "body": {
+      "error": {
+        "errors": [
+          {
+            "domain": "global",
+            "reason": "badRequest",
+            "message": "Bad Request"
+          }
+        ],
+        "code": 400,
+        "message": "Bad Request"
+      }
+    }
+  },
+  "mapped": {
+    "ok": false,
+    "error": {
+      "code": "badRequest",
+      "message": "Bad Request",
+      "retryable": false,
+      "outcome": "not_executed",
+      "category_hint": "invalid_value",
+      "field": "start"
+    }
+  }
+}
