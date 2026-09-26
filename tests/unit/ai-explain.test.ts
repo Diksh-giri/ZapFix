@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { explainWithAi } from "@/server/diagnosis/ai/explain";
+import { explainWithAi, toDiagnosisAi } from "@/server/diagnosis/ai/explain";
 import type { AiClient } from "@/server/diagnosis/ai/client";
 import type { AiPayload } from "@/server/diagnosis/ai/payload";
 
@@ -43,5 +43,16 @@ describe("explainWithAi (Decision #031)", () => {
     const client: AiClient = { complete: async () => { calls++; throw new Error("down"); } };
     expect((await explainWithAi({ client, ...args })).aiStatus).toBe("unavailable");
     expect(calls).toBe(2);
+  });
+});
+
+describe("toDiagnosisAi (fills ai_status, ai_output and confidence)", () => {
+  it("stores the answer and its confidence when valid", () => {
+    const output = JSON.parse(goodJson);
+    expect(toDiagnosisAi({ aiStatus: "ok", output })).toEqual({ aiStatus: "ok", aiOutput: output, confidence: "high" });
+  });
+
+  it.each(["invalid", "unavailable"] as const)("stores nothing when the AI was %s, so manual mode shows", (aiStatus) => {
+    expect(toDiagnosisAi({ aiStatus })).toEqual({ aiStatus, aiOutput: null, confidence: null });
   });
 });

@@ -204,14 +204,14 @@ Owners: **D** = Dikshyant (safety core + AI client), **J** = James (experience, 
 ## Phase 5: AI
 
 ### T22. AI client (D, L, with T23)
-**Depends on:** T13. **Status:** Partly: `buildAiPayload`, `shapeOf`, `maskQuotedValues` done.
+**Depends on:** T13. **Status:** Code done and unit-tested with a fake SDK (2026-09-26), no real call made yet: `createAnthropicClient` (model from `AI_MODEL`, key from `ANTHROPIC_API_KEY`, no tools, **no temperature** (current models such as Sonnet 5 reject it; low effort instead), output capped at 1200 tokens, per-call timeout, SDK retries off, no request at all without a key or model, token counts only via `onUsage`, errors carry fixed text only), `aiTimeoutMs()`. `explainWithAi` no longer retries a non-retryable failure (no key, 400/401/403/404, refusal). **Real check still to do:** `npx tsx scripts/ai-smoke.ts` (one case, at most two calls; prints status and token counts only). Record the measured token use in the PR.
 **Start here:** `server/diagnosis/ai/client.ts` (`createAnthropicClient` throws `not_implemented`), `explain.ts`, `.env.example` (`ANTHROPIC_API_KEY`, `AI_MODEL`, `AI_CALL_TIMEOUT_MS`).
 **Build:** implement `AiClient.complete({ system, user, timeoutMs })` with `@anthropic-ai/sdk`: model from `AI_MODEL` (never hard-coded), low temperature, output capped near 700 tokens, enforce `timeoutMs` (abort), return the text. **Check the SDK's current documentation** before writing calls. Never log the payload, prompt or key. Measure real token use on a few cases and record it in the PR.
 **Acceptance:** the client works against the real API in a local check; unit tests mock the SDK; **safety test 8** (payload snapshot contains names and shapes only).
 **Watch out:** the provider must stay swappable: everything else depends only on the `AiClient` interface.
 
 ### T23. Prompt, answer checking, retry and fallback (D, L, with T22)
-**Depends on:** T22. **Status:** Partly: `validateAiOutput` and `explainWithAi` (validate, retry once, fall back) done and tested; `prompt.ts` is a draft.
+**Depends on:** T22. **Status:** Partly: `validateAiOutput`, `explainWithAi` (validate, retry once, fall back) and `toDiagnosisAi` (fills `ai_status`, `ai_output`, `confidence`) done and tested. `prompt.ts` v1 written (exact JSON shape and length limits, uncertainty note rule, confidence limit stated outside the `<data>` block, `<` escaped so app text cannot close the block); **still to tune against the evaluation set (T24) with the real model.**
 **Build:** tune `SYSTEM_PROMPT` against the evaluation set (T24); keep app-supplied text only inside the delimited `<data>` block; confirm off-list picks and over-ceiling confidence are rejected; map results to `diagnoses.ai_status` (`ok`, `invalid`, `unavailable`).
 **Acceptance:** **safety test 9**; evaluation gates met (Appendix F); fallback shows manual mode.
 **Watch out:** never "repair" a bad AI answer. The AI has no tools.
