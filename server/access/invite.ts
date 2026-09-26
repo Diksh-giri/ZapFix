@@ -18,7 +18,7 @@ async function defaultStore(): Promise<InviteStore> {
   return createDrizzleInviteStore(db);
 }
 
-/** Only invited or active testers may request a sign-in link. */
+/** True for invited and active testers; false for revoked and unknown emails. */
 export async function isInvited(email: string, store?: InviteStore): Promise<boolean> {
   const normalized = normalizeInviteEmail(email);
   if (!normalized) return false;
@@ -26,7 +26,7 @@ export async function isInvited(email: string, store?: InviteStore): Promise<boo
   return status === "invited" || status === "active";
 }
 
-/** Called only after Supabase verifies the magic link. */
+/** Called only after Supabase has verified the password. Moves invited -> active. */
 export async function activateInvite(email: string, store?: InviteStore): Promise<boolean> {
   const normalized = normalizeInviteEmail(email);
   if (!normalized) return false;

@@ -25,11 +25,11 @@ Owners: **D** = Dikshyant (safety core + AI client), **J** = James (experience, 
 **Watch out:** never share the service-role key with the browser or commit it. Google test users must be added or sign-in shows "access blocked".
 
 ### T3. Sign-in and invite gate (J, M)
-**Depends on:** T2. **Status:** Done (2026-09-25): invite-gated Supabase magic-link sign-in verified against the dev project for invited, unknown, revoked and sign-out cases.
+**Depends on:** T2. **Status:** Done (2026-09-25): invite-gated Supabase sign-in verified against the dev project for invited, unknown, revoked and sign-out cases. **Changed 2026-09-26:** email and password replaces the magic link (accounts are created by the project owner in Supabase; the magic-link code was removed).
 **Goal:** only invited emails can sign in; each user sees only their own data.
-**Start here:** `server/access/session.ts`, `server/access/invite.ts`, `app/sign-in/page.tsx`, `app/auth/confirm/route.ts`, `db/schema/index.ts` (`invites`).
+**Start here:** `server/access/session.ts`, `server/access/invite.ts`, `app/sign-in/page.tsx`, `app/sign-in/actions.ts`, `server/access/password-sign-in.ts`, `db/schema/index.ts` (`invites`).
 **Build:**
-1. Supabase Auth email sign-in (ask the human whether to use email magic link or email+password; magic link avoids password handling).
+1. Supabase Auth email sign-in (decided: email and password, accounts created by the owner; see Status).
 2. `isInvited(email)`: look up `invites` where status in `invited`/`active`; refuse `revoked` or unknown. Mark `invited` -> `active` on first sign-in.
 3. Enforce the gate server-side (a callback route or middleware), not just in the UI. Public sign-up must also be off in Supabase.
 4. Sign-in page with clear "not invited" message; sign-out.
