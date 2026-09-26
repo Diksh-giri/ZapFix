@@ -1,0 +1,18 @@
+{
+  "scenario": "success",
+  "description": "A valid file is created.",
+  "recorded_at": "2026-09-26",
+  "request_shape": {
+    "name": "provided",
+    "content": "provided"
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "id": "[id]"
+    }
+  },
+  "mapped": {
+    "ok": true
+  }
+}
