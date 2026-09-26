@@ -12,8 +12,8 @@ import { missingRequiredMappings } from "../types";
  * dropped connection is "uncertain" and a retry then needs explicit confirmation.
  *
  * Values are sent to Slack as they are, so its real errors are what get recorded.
- * TODO(T25): confirm the empty-channel and empty-text responses against real fixtures
- * (scripts/record-slack-fixtures.ts) and adjust the mapping if Slack answers differently.
+ * Checked against real responses recorded 2026-09-26 (tests/fixtures/slack/): Slack answers an empty and an unknown
+ * channel with the same channel_not_found, so the mapping tells them apart by whether the value was empty.
  */
 const ENDPOINT = "https://slack.com/api/chat.postMessage";
 

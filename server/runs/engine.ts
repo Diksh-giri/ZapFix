@@ -71,5 +71,3 @@ export function assertCanDiagnose(repairCount: number): void {
     );
   }
 }
-
-// TODO(T12): Drizzle-backed RunStore (see store.ts) and the three route handlers; orchestration lives in orchestrator.ts.
