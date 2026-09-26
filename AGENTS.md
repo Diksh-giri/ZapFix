@@ -158,3 +158,13 @@ The task's acceptance list in `docs/TASK_BRIEFS.md` is met; tests added; safety 
 - Google OAuth app is in Testing mode: add each tester as a test user; their Google authorization lasts 7 days.
 - The design document (TDD) lives in a shared online doc. If `docs/TDD.md` has been replaced by the exported Markdown, use it; the essentials for building are already in `docs/TASK_BRIEFS.md` appendices.
 - Path notes: the sign-in page is `app/sign-in/`; the connections dynamic segment is `app/api/connections/[param]/` (provider name for `start`/`callback`, connection id for `DELETE`).
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

@@ -1,3 +1,4 @@
-import { notImplemented } from "@/server/http/handler";
+import { apiRoute } from "@/server/http/handler";
+import { getWorkflowService } from "@/server/workflows";
 
-export const GET = notImplemented("T10", "GET /api/apps");
+export const GET = apiRoute({}, async () => ({ apps: getWorkflowService().listApps() }));
