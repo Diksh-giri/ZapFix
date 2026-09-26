@@ -85,7 +85,7 @@ Owners: **D** = Dikshyant (safety core + AI client), **J** = James (experience, 
 **Watch out:** Google Testing mode: authorizations expire 7 days after consent. Use Google's current OAuth docs, not memory. Never log the code, tokens or secrets. Sensitive-scope classification must be confirmed before requesting scopes.
 
 ### T10. Workflow service (J, M)
-**Depends on:** T5, T8. **Status:** In progress (2026-09-26): app catalog and workflow service contracts done; persistence and workflow endpoints pending.
+**Depends on:** T5, T8. **Status:** In progress (2026-09-26): app catalog plus owner-scoped workflow create, list, and read are done; update and time-zone behavior pending.
 **Start here:** `lib/schemas/workflow-config.ts`, `lib/schemas/api.ts` (`CreateWorkflowRequest`, `PatchWorkflowRequest`), `server/workflows/resolve.ts`, `server/adapters/registry.ts`, `app/api/apps`, `app/api/workflows/**`.
 **Build:**
 1. `GET /api/apps`: return the catalog from `listAdapters()` (actions, fields, required flags).
