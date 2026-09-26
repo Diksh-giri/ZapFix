@@ -1,7 +1,7 @@
 import { deepEqual } from "@/lib/canonical";
 import type { ActionConfig } from "@/lib/schemas/workflow-config";
 import type { StoredEvent } from "@/server/audit/store";
-import type { NewApproval, NewConfigChange, ProposalContext, ProposalStore, ProposalTx } from "./store";
+import type { ChangeContext, NewApproval, NewConfigChange, ProposalContext, ProposalStore, ProposalTx } from "./store";
 import type { ProposalDraft, ProposalRecord, ProposalStatus } from "./types";
 
 /** Where a test can force a failure, to prove a half-finished transaction leaves nothing behind. */
@@ -11,6 +11,7 @@ export type FailurePoint =
   | "insertConfigChange"
   | "updateWorkflowConfig"
   | "setProposalStatus"
+  | "markChangeRestored"
   | "insertEvent";
 
 export interface StoredApproval extends NewApproval {
@@ -19,6 +20,7 @@ export interface StoredApproval extends NewApproval {
 export interface StoredConfigChange extends NewConfigChange {
   id: string;
   status: "applied" | "restored";
+  restoredAt?: Date;
 }
 export interface StoredWorkflow {
   id: string;
@@ -32,7 +34,7 @@ export interface StoredWorkflow {
 export interface MemoryProposalStore extends ProposalStore {
   all(): ProposalRecord[];
   setStatus(id: string, status: ProposalStatus): void;
-  /** Adds a proposal together with the workflow, diagnosis and failure it belongs to. */
+  /** Adds a proposal with its diagnosis and failure, and the workflow too if it is not there yet. */
   seed(context: ProposalContext): void;
   workflow(id: string): StoredWorkflow | undefined;
   /** Simulates the user editing the workflow by hand: new settings, config_version + 1. */
@@ -76,6 +78,30 @@ export function createMemoryProposalStore(): MemoryProposalStore {
           ...structuredClone(extra),
         };
       },
+      async loadChange(changeId) {
+        const change = s.changes.find((c) => c.id === changeId);
+        const workflow = change ? s.workflows.get(change.workflowId) : undefined;
+        if (!change || !workflow) return undefined;
+        const proposalId = s.approvals.find((a) => a.id === change.approvalId)?.proposalId;
+        const runId = proposalId ? s.contexts.get(proposalId)?.runId : undefined;
+        if (!runId) return undefined;
+        const applied = s.changes.filter((c) => c.workflowId === change.workflowId && c.status === "applied");
+        const result: ChangeContext = {
+          change: {
+            id: change.id,
+            workflowId: change.workflowId,
+            fieldPath: change.fieldPath,
+            beforeValue: structuredClone(change.beforeValue),
+            afterValue: structuredClone(change.afterValue),
+            status: change.status,
+            appliedAt: change.appliedAt,
+          },
+          workflow: { id: workflow.id, userId: workflow.userId, config: structuredClone(workflow.config), configVersion: workflow.configVersion },
+          runId,
+          latestAppliedId: applied.at(-1)?.id, // insertion order stands in for applied_at order
+        };
+        return result;
+      },
       async insertApproval(a) {
         maybeFail("insertApproval");
         if (s.approvals.some((x) => x.proposalId === a.proposalId)) throw new Error("approvals: one decision per proposal");
@@ -110,6 +136,14 @@ export function createMemoryProposalStore(): MemoryProposalStore {
         const p = s.proposals.find((x) => x.id === proposalId);
         if (p) p.status = status;
       },
+      async markChangeRestored(changeId, restoredAt) {
+        maybeFail("markChangeRestored");
+        const c = s.changes.find((x) => x.id === changeId);
+        if (c) {
+          c.status = "restored";
+          c.restoredAt = restoredAt;
+        }
+      },
       audit: {
         async insertEvent(e) {
           maybeFail("insertEvent");
@@ -137,10 +171,9 @@ export function createMemoryProposalStore(): MemoryProposalStore {
     seed(context) {
       state.proposals.push(structuredClone(context.proposal));
       state.contexts.set(context.proposal.id, { diagnosis: structuredClone(context.diagnosis), failure: { ...context.failure }, runId: context.runId });
-      state.workflows.set(context.workflow.id, {
-        ...structuredClone(context.workflow),
-        lastModifiedBy: "user",
-      });
+      if (!state.workflows.has(context.workflow.id)) {
+        state.workflows.set(context.workflow.id, { ...structuredClone(context.workflow), lastModifiedBy: "user" });
+      }
     },
     workflow: (id) => {
       const w = state.workflows.get(id);

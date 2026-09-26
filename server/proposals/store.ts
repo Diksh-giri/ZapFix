@@ -13,6 +13,24 @@ export interface ProposalContext {
   runId: string;
 }
 
+/** A saved config change, with what restore needs to decide whether it may be undone. */
+export interface ChangeContext {
+  change: {
+    id: string;
+    workflowId: string;
+    fieldPath: string;
+    beforeValue: unknown;
+    afterValue: unknown;
+    status: "applied" | "restored";
+    appliedAt: Date;
+  };
+  workflow: { id: string; userId: string; config: ActionConfig; configVersion: number };
+  /** The run whose failure led to this change. Events are filed under it. */
+  runId: string;
+  /** The most recent change of this workflow that is still `applied` (restore goes most-recent-first). */
+  latestAppliedId: string | undefined;
+}
+
 export interface NewApproval {
   proposalId: string;
   userId: string;
@@ -40,6 +58,8 @@ export interface NewConfigChange {
  */
 export interface ProposalTx {
   load(proposalId: string): Promise<ProposalContext | undefined>;
+  /** Reads a change and its workflow, locking both (select ... for update). */
+  loadChange(changeId: string): Promise<ChangeContext | undefined>;
   insertApproval(approval: NewApproval): Promise<string>;
   insertConfigChange(change: NewConfigChange): Promise<string>;
   /**
@@ -48,12 +68,14 @@ export interface ProposalTx {
    */
   updateWorkflowConfig(workflowId: string, config: ActionConfig, expectedVersion: number): Promise<boolean>;
   setProposalStatus(proposalId: string, status: ProposalStatus): Promise<void>;
+  /** Only status and restored_at may change on a saved change (the database enforces the same). */
+  markChangeRestored(changeId: string, restoredAt: Date): Promise<void>;
   audit: AuditStore;
 }
 
 /**
  * Persistence port for proposals. memory-store.ts is the test double.
- * TODO(T14): restore, and the Drizzle version of this store.
+ * TODO(T14): the Drizzle version of this store.
  */
 export interface ProposalStore {
   /**
