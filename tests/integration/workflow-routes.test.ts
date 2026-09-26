@@ -3,6 +3,7 @@ import { AppError } from "@/lib/errors";
 
 const mocks = vi.hoisted(() => ({
   service: {
+    listApps: vi.fn(),
     create: vi.fn(),
     list: vi.fn(),
     get: vi.fn(),
@@ -20,6 +21,7 @@ vi.mock("@/server/workflows", () => ({ getWorkflowService: () => mocks.service }
 
 import { GET as listWorkflows, POST as createWorkflow } from "@/app/api/workflows/route";
 import { GET as getWorkflow, PATCH as patchWorkflow } from "@/app/api/workflows/[id]/route";
+import { GET as getApps } from "@/app/api/apps/route";
 
 const USER = "00000000-0000-4000-8000-000000000001";
 const WORKFLOW = "00000000-0000-4000-8000-000000000010";
@@ -37,6 +39,23 @@ const request = (url: string, method = "GET", body?: unknown) => new Request(url
 });
 
 beforeEach(() => vi.clearAllMocks());
+
+describe("app catalog route", () => {
+  it("returns the public app catalog", async () => {
+    const apps = [{
+      id: "google_calendar",
+      provider: "google",
+      actions: [{ key: "create_event", label: "Create event", fields: [] }],
+    }];
+    mocks.service.listApps.mockReturnValue(apps);
+
+    const response = await getApps(request("http://test/api/apps"), params());
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ apps });
+    expect(mocks.service.listApps).toHaveBeenCalledOnce();
+  });
+});
 
 describe("workflow create and read routes", () => {
   it("lists only the signed-in user's workflows", async () => {
