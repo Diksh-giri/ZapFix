@@ -63,7 +63,7 @@ async function reset() {
 }
 
 async function newProposal(store: ProposalStore) {
-  const made = await createProposal({ store }, { diagnosis: { ...diagnosis }, workflowId: WORKFLOW, config, configVersion: 1 });
+  const made = await createProposal({ store }, { diagnosis: { ...diagnosis, id: DIAGNOSIS }, workflowId: WORKFLOW, config, configVersion: 1 });
   if (!made) throw new Error("expected a proposal");
   return made;
 }
