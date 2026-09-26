@@ -13,6 +13,7 @@ import { sanitizeSlackBody } from "../server/adapters/slack/sanitize";
  * Allow, and it catches the return on http://localhost:3000 (stop the dev server first). The bot token stays in memory,
  * is never written to a file, and is revoked at the end. The sanitizer keeps only ok/error/channel/ts-style fields.
  * Review tests/fixtures/slack/*.json before committing. It posts ONE real message to the channel and deletes it again.
+ * Set SLACK_HOLD_SECONDS=30 to keep the test message visible for 30s before it is deleted.
  * Alternative: set SLACK_TEST_BOT_TOKEN for this command to use a bot token you already have.
  */
 const REDIRECT_URI = "http://localhost:3000/api/connections/slack/callback";
@@ -118,12 +119,20 @@ async function main() {
 
     if (result.ok && s.name === "success") {
       const [ch, ts] = result.externalRef.split(":");
-      await fetch("https://slack.com/api/chat.delete", {
+      console.log(`  posted to channel id ${ch} (check that this is the channel you meant)`);
+      const holdSeconds = Number(process.env.SLACK_HOLD_SECONDS ?? 0);
+      if (holdSeconds > 0) {
+        console.log(`  keeping the test message for ${holdSeconds}s so you can see it...`);
+        await new Promise((r) => setTimeout(r, holdSeconds * 1000));
+      }
+      const del = await fetch("https://slack.com/api/chat.delete", {
         method: "POST",
         headers: { authorization: `Bearer ${token}`, "content-type": "application/json; charset=utf-8" },
         body: JSON.stringify({ channel: ch, ts }),
-      }).catch(() => undefined);
-      console.log("  (test message deleted)");
+      })
+        .then((r) => r.json() as Promise<{ ok?: boolean; error?: string }>)
+        .catch(() => undefined);
+      console.log(del?.ok ? "  (test message deleted)" : `  !! could NOT delete the test message (${del?.error ?? "no answer"}). Delete it by hand.`);
     }
   }
   await revoke();
