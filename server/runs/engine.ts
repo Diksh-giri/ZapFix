@@ -56,4 +56,18 @@ export function assertRetryAllowed(
   }
 }
 
-// TODO(T12): Drizzle-backed RunStore (see store.ts) and the three route handlers; orchestration lives in orchestrator.ts.
+/** Decision #007: after this many applied-but-unsuccessful repairs, no new proposals are made (manual mode). */
+export const REPAIR_LIMIT = 2;
+
+/**
+ * The diagnosis endpoint must call this with `runs.repair_count` BEFORE diagnosing or creating a proposal.
+ * (repair_count goes up when a retry fails after a debugger change; see orchestrator.ts.)
+ */
+export function assertCanDiagnose(repairCount: number): void {
+  if (repairCount >= REPAIR_LIMIT) {
+    throw new AppError(
+      "repair_limit_reached",
+      "Two repairs did not fix this, so ZapFix will not suggest another. Please fix the workflow yourself; the original error and the checked facts are shown below.",
+    );
+  }
+}

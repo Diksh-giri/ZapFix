@@ -1,0 +1,18 @@
+{
+  "scenario": "empty_content",
+  "description": "The content is empty (it is optional).",
+  "recorded_at": "2026-09-26",
+  "request_shape": {
+    "name": "provided",
+    "content": "empty"
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "id": "[id]"
+    }
+  },
+  "mapped": {
+    "ok": true
+  }
+}

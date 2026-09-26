@@ -62,10 +62,10 @@ describe("create_file: the request", () => {
     expect(parts(fetchFn).chunks[1]!.split("\r\n\r\n")[1]).toBe("");
   });
 
-  it("sends an empty name to Drive as it is, so Drive's real behavior is what we record", async () => {
+  it("sends empty content to Drive as it is (content is optional)", async () => {
     const fetchFn = vi.fn().mockResolvedValue(json({ id: "1" }));
-    await run(fetchFn, { name: "", content: "x" });
-    expect(JSON.parse(parts(fetchFn).chunks[0]!.split("\r\n\r\n")[1]!).name).toBe("");
+    await run(fetchFn, { name: "notes.txt", content: "" });
+    expect(parts(fetchFn).chunks[1]!.split("\r\n\r\n")[1]).toBe("");
   });
 });
 
@@ -149,5 +149,23 @@ describe("create_file: uncertain outcomes and the contract", () => {
     const a = createGoogleDriveAdapter(vi.fn());
     expect([a.id, a.provider]).toEqual(["google_drive", "google"]);
     expect(a.actions[0]!.fields.map((f) => [f.key, f.required])).toEqual([["name", true], ["content", false]]);
+  });
+});
+
+describe("create_file: an empty name is a failure ZapFix can diagnose", () => {
+  // Real Drive accepts an empty name and creates a nameless file (tests/fixtures/google-drive/empty_name.json),
+  // so nothing would ever fail. ZapFix treats it as a missing required field, before any call.
+  it.each(["", "   "])("refuses name %j as a missing field and does not call Drive", async (name) => {
+    const fetchFn = vi.fn();
+    const r = await run(fetchFn, { ...values, name });
+    expect(fetchFn).not.toHaveBeenCalled();
+    expect(r).toMatchObject({ ok: false, error: { category_hint: "missing_field", field: "name", outcome: "not_executed", retryable: false } });
+    if (!r.ok) expect(StandardErrorSchema.safeParse(r.error).success).toBe(true);
+  });
+
+  it("still creates a file with a normal name and allows empty content (it is optional)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(json({ id: "1AbC" }));
+    expect(await run(fetchFn, { ...values, content: "" })).toMatchObject({ ok: true });
+    expect(fetchFn).toHaveBeenCalledTimes(1);
   });
 });

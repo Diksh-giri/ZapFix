@@ -1,0 +1,26 @@
+{
+  "scenario": "invalid_token",
+  "description": "An invalid or revoked bot token.",
+  "recorded_at": "2026-09-26",
+  "request_shape": {
+    "channel": "provided",
+    "text": "provided"
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "ok": false,
+      "error": "invalid_auth"
+    }
+  },
+  "mapped": {
+    "ok": false,
+    "error": {
+      "code": "invalid_auth",
+      "message": "The Slack connection is not valid any more. Reconnect Slack and try again.",
+      "retryable": false,
+      "outcome": "not_executed",
+      "category_hint": "auth"
+    }
+  }
+}

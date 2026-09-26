@@ -1,0 +1,27 @@
+{
+  "scenario": "unknown_channel",
+  "description": "The channel does not exist.",
+  "recorded_at": "2026-09-26",
+  "request_shape": {
+    "channel": "provided",
+    "text": "provided"
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "ok": false,
+      "error": "channel_not_found"
+    }
+  },
+  "mapped": {
+    "ok": false,
+    "error": {
+      "code": "channel_not_found",
+      "message": "Slack could not find that channel.",
+      "retryable": false,
+      "outcome": "not_executed",
+      "category_hint": "not_found",
+      "field": "channel"
+    }
+  }
+}

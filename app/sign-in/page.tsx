@@ -1,25 +1,24 @@
 import { getSessionUser } from "@/server/access/session";
-import { requestMagicLink, signOut } from "./actions";
+import { signInWithPassword, signOut } from "./actions";
 
 const messages: Record<string, { tone: string; text: string }> = {
-  sent: { tone: "text-green-700", text: "Check your email for a secure sign-in link." },
   signed_out: { tone: "text-neutral-700", text: "You have been signed out." },
-  invalid_email: { tone: "text-red-700", text: "Enter a valid email address." },
-  not_invited: { tone: "text-red-700", text: "This email is not currently invited to ZapFix." },
+  invalid_input: { tone: "text-red-700", text: "Enter your email address and your password." },
+  invalid_credentials: { tone: "text-red-700", text: "That email or password is not right." },
+  not_invited: { tone: "text-red-700", text: "This account is not currently invited to ZapFix." },
   not_configured: { tone: "text-red-700", text: "Sign-in is not configured yet. Contact the project owner." },
-  send_failed: { tone: "text-red-700", text: "We could not send the sign-in link. Please try again." },
-  invalid_link: { tone: "text-red-700", text: "This sign-in link is invalid or has expired. Request a new one." },
+  failed: { tone: "text-red-700", text: "We could not sign you in. Please try again in a moment." },
 };
 
-export default async function Page({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
-  const [{ status }, user] = await Promise.all([searchParams, getSessionUser()]);
+export default async function Page({ searchParams }: { searchParams: Promise<{ status?: string; next?: string }> }) {
+  const [{ status, next }, user] = await Promise.all([searchParams, getSessionUser()]);
   const message = status ? messages[status] : undefined;
 
   return (
     <div className="mx-auto max-w-md space-y-6 py-12">
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold">Sign in to ZapFix</h1>
-        <p className="text-sm text-neutral-600">Use the email address that was invited to the test.</p>
+        <p className="text-sm text-neutral-600">Use the email address and password the project owner gave you.</p>
       </div>
 
       {message ? <p className={`rounded-md bg-neutral-100 p-3 text-sm ${message.tone}`}>{message.text}</p> : null}
@@ -34,7 +33,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
           </form>
         </div>
       ) : (
-        <form action={requestMagicLink} className="space-y-4">
+        <form action={signInWithPassword} className="space-y-4">
+          <input name="next" type="hidden" value={next ?? ""} />
           <label className="block space-y-2 text-sm font-medium" htmlFor="email">
             Email address
             <input
@@ -47,15 +47,24 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
               type="email"
             />
           </label>
+          <label className="block space-y-2 text-sm font-medium" htmlFor="password">
+            Password
+            <input
+              autoComplete="current-password"
+              className="block w-full rounded-md border border-neutral-300 px-3 py-2 font-normal outline-none focus:border-blue-600"
+              id="password"
+              name="password"
+              required
+              type="password"
+            />
+          </label>
           <button className="w-full rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800" type="submit">
-            Email me a sign-in link
+            Sign in
           </button>
         </form>
       )}
 
-      <p className="text-xs leading-5 text-neutral-500">
-        ZapFix sends a one-time link. You do not need a password, and only invited testers can sign in.
-      </p>
+      <p className="text-xs leading-5 text-neutral-500">Only invited testers can sign in. Accounts are created by the project owner.</p>
     </div>
   );
 }

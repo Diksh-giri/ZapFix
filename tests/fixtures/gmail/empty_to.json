@@ -1,0 +1,38 @@
+{
+  "scenario": "empty_to",
+  "description": "The recipient is empty (missing required field).",
+  "recorded_at": "2026-09-26",
+  "request_shape": {
+    "to": "empty",
+    "subject": "provided",
+    "body": "provided"
+  },
+  "response": {
+    "status": 400,
+    "body": {
+      "error": {
+        "code": 400,
+        "message": "Recipient address required",
+        "errors": [
+          {
+            "message": "Recipient address required",
+            "domain": "global",
+            "reason": "invalidArgument"
+          }
+        ],
+        "status": "INVALID_ARGUMENT"
+      }
+    }
+  },
+  "mapped": {
+    "ok": false,
+    "error": {
+      "code": "invalidArgument",
+      "message": "Recipient address required",
+      "retryable": false,
+      "outcome": "not_executed",
+      "category_hint": "missing_field",
+      "field": "to"
+    }
+  }
+}

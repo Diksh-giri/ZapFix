@@ -13,8 +13,8 @@ import { missingRequiredMappings } from "../types";
  * one-success-per-step rule and the uncertain-outcome rule: a timeout or dropped connection is "uncertain" and a retry
  * then needs explicit confirmation.
  *
- * Values are sent as they are so Drive's real behavior gets recorded.
- * TODO(T11): confirm Drive's real responses (for example an empty name) against recorded fixtures.
+ * Values are sent as they are, EXCEPT an empty name: real Drive accepts it and creates a nameless file
+ * (tests/fixtures/google-drive/, recorded 2026-09-26), so it is refused before any call (decision 035).
  */
 const ENDPOINT = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id";
 
@@ -80,6 +80,16 @@ export function createGoogleDriveAdapter(fetchFn: typeof fetch = fetch): AppAdap
       if (!action) {
         return fail(summary, {
           category_hint: "unknown", code: "unknown_action", message: "Unknown action",
+          retryable: false, outcome: "not_executed",
+        });
+      }
+
+      // Real Drive accepts an empty name and creates a nameless file, so it would never fail. ZapFix treats it as a
+      // missing required field (before any call) so the debugger can explain it and offer a fix.
+      if ((values.name ?? "").trim() === "") {
+        return fail(summary, {
+          category_hint: "missing_field", code: "missing_required_field", field: "name",
+          message: "The file name is empty.",
           retryable: false, outcome: "not_executed",
         });
       }

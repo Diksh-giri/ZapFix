@@ -12,8 +12,9 @@ import { missingRequiredMappings } from "../types";
  * dropped connection is "uncertain" and a retry then needs explicit confirmation.
  *
  * Values are sent as they are so Gmail's real errors get recorded, EXCEPT a line break in the recipient or subject,
- * which would let a value inject extra headers (for example a hidden Bcc). That is refused before anything is sent.
- * TODO(T11): confirm Gmail's real 400 responses for an empty or invalid recipient against recorded fixtures.
+ * which would let a value inject extra headers (for example a hidden Bcc), and an empty subject, which Gmail would
+ * send anyway (decision 035). Both are refused before anything is sent.
+ * Checked against real responses recorded 2026-09-26 (tests/fixtures/gmail/): an empty or invalid recipient is a 400.
  */
 const ENDPOINT = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send";
 
@@ -102,6 +103,16 @@ export function createGmailAdapter(fetchFn: typeof fetch = fetch): AppAdapter {
       if (!action) {
         return fail(summary, {
           category_hint: "unknown", code: "unknown_action", message: "Unknown action",
+          retryable: false, outcome: "not_executed",
+        });
+      }
+
+      // Real Gmail accepts an empty subject and sends the email, so it would never fail. ZapFix treats it as a
+      // missing required field (before any call) so the debugger can explain it and offer a fix.
+      if ((values.subject ?? "").trim() === "") {
+        return fail(summary, {
+          category_hint: "missing_field", code: "missing_required_field", field: "subject",
+          message: "The subject is empty.",
           retryable: false, outcome: "not_executed",
         });
       }

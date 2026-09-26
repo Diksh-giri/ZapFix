@@ -78,6 +78,8 @@ web_modules/
 .next
 out
 
+.DS_Store
+
 # Nuxt.js build / generate output
 .nuxt
 dist

@@ -21,21 +21,15 @@ cp .env.example .env.local     # fill in values as each task needs them
 npm run dev                    # http://localhost:3000
 ```
 
-### Supabase magic-link sign-in
+### Sign-in (email and password, invite-only)
 
-ZapFix permits only emails listed in the `invites` table with status `invited` or `active`.
+ZapFix permits only emails listed in the `invites` table with status `invited` or `active`. Nobody signs up on the site: the project owner creates each tester's account.
 
-In Supabase Authentication settings:
+In Supabase:
 
-1. Disable public user sign-ups. ZapFix creates the Supabase Auth user server-side only after the email passes the invite check.
-2. Add `http://localhost:3000/auth/confirm` and the deployed `/auth/confirm` URL to the redirect allow list.
-3. The default PKCE email link is supported. If you customize the magic-link email template, use:
-
-   ```text
-   {{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=email
-   ```
-
-Add testers through the Supabase SQL editor; use lowercase email addresses:
+1. Authentication, Sign In / Providers, Email: turn **off** "Allow new users to sign up".
+2. Add a tester: Authentication, Users, **Add user**, **Create new user**. Enter their email and a password, and tick **Auto Confirm User** (no email is sent).
+3. Add the same email to the invite list in the SQL editor. Use lowercase:
 
 ```sql
 insert into public.invites (email, status)
@@ -43,7 +37,7 @@ values ('tester@example.com', 'invited')
 on conflict (email) do update set status = 'invited';
 ```
 
-After Supabase verifies the link, ZapFix checks the invite again and changes its status to `active`.
+At sign-in ZapFix checks the password with Supabase first, then the invite. A wrong password gives the same message whether or not the email is invited. A valid password with a missing or `revoked` invite is signed out again, and the first successful sign-in changes `invited` to `active`.
 
 | Command | What it does |
 | --- | --- |
