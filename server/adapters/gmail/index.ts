@@ -106,6 +106,16 @@ export function createGmailAdapter(fetchFn: typeof fetch = fetch): AppAdapter {
         });
       }
 
+      // Real Gmail accepts an empty subject and sends the email, so it would never fail. ZapFix treats it as a
+      // missing required field (before any call) so the debugger can explain it and offer a fix.
+      if ((values.subject ?? "").trim() === "") {
+        return fail(summary, {
+          category_hint: "missing_field", code: "missing_required_field", field: "subject",
+          message: "The subject is empty.",
+          retryable: false, outcome: "not_executed",
+        });
+      }
+
       for (const field of ["to", "subject"]) {
         if (/[\r\n\u0000]/.test(values[field] ?? "")) {
           return fail(summary, {

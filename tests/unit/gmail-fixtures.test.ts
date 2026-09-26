@@ -46,10 +46,10 @@ describe("real Gmail responses (recorded fixtures)", () => {
     expect(r).toMatchObject({ ok: false, error: { category_hint: "auth", code: "authError", outcome: "not_executed" } });
   });
 
-  it("Gmail itself accepts an empty subject (a real email was sent), so ZapFix must catch an empty subject before the call", async () => {
-    const { r, f } = await replay("empty_subject");
-    expect(f.response.status).toBe(200);
-    expect(r).toMatchObject({ ok: true });
+  it("Gmail itself accepts an empty subject (recorded HTTP 200, a real email was sent); that is why the adapter refuses it before the call", async () => {
+    expect(load("empty_subject").response.status).toBe(200);
+    const { r } = await replay("empty_subject");
+    expect(r).toMatchObject({ ok: false, error: { category_hint: "missing_field", field: "subject", outcome: "not_executed" } });
   });
 
   it("a real success response is ok", async () => {
@@ -57,7 +57,8 @@ describe("real Gmail responses (recorded fixtures)", () => {
     expect(r).toMatchObject({ ok: true });
   });
 
-  it.each(Object.keys(scenarios))("%s: the saved 'mapped' result matches what the adapter produces today", async (name) => {
+  // empty_subject is left out: the recording shows what Gmail does (sends it), but the adapter now refuses it first.
+  it.each(Object.keys(scenarios).filter((n) => n !== "empty_subject"))("%s: the saved 'mapped' result matches what the adapter produces today", async (name) => {
     const { r, f } = await replay(name);
     expect(f.mapped.ok).toBe(r.ok);
     if (!r.ok) expect(f.mapped.error).toEqual(r.error);

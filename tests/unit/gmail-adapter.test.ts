@@ -156,3 +156,21 @@ describe("send_email: uncertain outcomes and the contract", () => {
     expect([a.id, a.provider, a.actions.map((x) => x.key)]).toEqual(["gmail", "google", ["send_email"]]);
   });
 });
+
+describe("send_email: an empty subject is a failure ZapFix can diagnose", () => {
+  // Real Gmail accepts an empty subject and sends the email (tests/fixtures/gmail/empty_subject.json),
+  // so nothing would ever fail. ZapFix treats it as a missing required field, before any call.
+  it.each(["", "   "])("refuses subject %j as a missing field and does not call Gmail", async (subject) => {
+    const fetchFn = vi.fn();
+    const r = await run(fetchFn, { ...values, subject });
+    expect(fetchFn).not.toHaveBeenCalled();
+    expect(r).toMatchObject({ ok: false, error: { category_hint: "missing_field", field: "subject", outcome: "not_executed", retryable: false } });
+    if (!r.ok) expect(StandardErrorSchema.safeParse(r.error).success).toBe(true);
+  });
+
+  it("still sends a normal subject", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(json({ id: "18abc", threadId: "t1" }));
+    expect(await run(fetchFn)).toMatchObject({ ok: true });
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+});

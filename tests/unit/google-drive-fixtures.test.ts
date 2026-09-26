@@ -35,11 +35,10 @@ describe("real Google Drive responses (recorded fixtures)", () => {
     expect(r).toMatchObject({ ok: false, error: { category_hint: "auth", code: "authError", outcome: "not_executed", retryable: false } });
   });
 
-  it("Drive itself accepts an empty file name and empty content, so ZapFix must catch an empty name before the call", async () => {
-    for (const name of ["empty_name", "empty_content"]) {
-      const { f } = await replay(name);
-      expect(f.response.status).toBe(200);
-    }
+  it("Drive itself accepts an empty file name and empty content (recorded HTTP 200); that is why the adapter refuses an empty name before the call", async () => {
+    for (const name of ["empty_name", "empty_content"]) expect(load(name).response.status).toBe(200);
+    const { r } = await replay("empty_name");
+    expect(r).toMatchObject({ ok: false, error: { category_hint: "missing_field", field: "name", outcome: "not_executed" } });
   });
 
   it("a real success response is ok", async () => {
@@ -47,7 +46,8 @@ describe("real Google Drive responses (recorded fixtures)", () => {
     expect(r).toMatchObject({ ok: true });
   });
 
-  it.each(Object.keys(scenarios))("%s: the saved 'mapped' result matches what the adapter produces today", async (name) => {
+  // empty_name is left out: the recording shows what Drive does (accepts it), but the adapter now refuses it first.
+  it.each(Object.keys(scenarios).filter((n) => n !== "empty_name"))("%s: the saved 'mapped' result matches what the adapter produces today", async (name) => {
     const { r, f } = await replay(name);
     expect(f.mapped.ok).toBe(r.ok);
     if (!r.ok) expect(f.mapped.error).toEqual(r.error);

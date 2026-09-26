@@ -3,26 +3,319 @@
     "id": "gmail-empty-recipient-one-alternative",
     "note": "From the REAL Gmail response for an empty To (tests/fixtures/gmail/empty_to.json). The trigger has another email field with a value.",
     "input": {
-      "error": { "category_hint": "missing_field", "code": "invalidArgument", "message": "Recipient address required", "field": "to", "retryable": false, "outcome": "not_executed" },
-      "config": { "to": { "kind": "mapped", "source": "email" }, "subject": { "kind": "mapped", "source": "subject" }, "body": { "kind": "mapped", "source": "message" } },
-      "resolved": { "to": "", "subject": "Hello", "body": "Hi there" },
-      "triggerData": { "email": "", "work_email": "ana@example.com", "subject": "Hello", "message": "Hi there" },
-      "triggerSchema": { "fields": [ { "key": "email", "label": "Email", "type": "email" }, { "key": "work_email", "label": "Work email", "type": "email" }, { "key": "subject", "label": "Subject", "type": "text" }, { "key": "message", "label": "Message", "type": "text" } ] },
-      "actionFields": [ { "key": "to", "label": "To", "required": true, "type": "email" }, { "key": "subject", "label": "Subject", "required": true, "type": "text" }, { "key": "body", "label": "Message", "required": true, "type": "text" } ]
+      "error": {
+        "category_hint": "missing_field",
+        "code": "invalidArgument",
+        "message": "Recipient address required",
+        "field": "to",
+        "retryable": false,
+        "outcome": "not_executed"
+      },
+      "config": {
+        "to": {
+          "kind": "mapped",
+          "source": "email"
+        },
+        "subject": {
+          "kind": "mapped",
+          "source": "subject"
+        },
+        "body": {
+          "kind": "mapped",
+          "source": "message"
+        }
+      },
+      "resolved": {
+        "to": "",
+        "subject": "Hello",
+        "body": "Hi there"
+      },
+      "triggerData": {
+        "email": "",
+        "work_email": "ana@example.com",
+        "subject": "Hello",
+        "message": "Hi there"
+      },
+      "triggerSchema": {
+        "fields": [
+          {
+            "key": "email",
+            "label": "Email",
+            "type": "email"
+          },
+          {
+            "key": "work_email",
+            "label": "Work email",
+            "type": "email"
+          },
+          {
+            "key": "subject",
+            "label": "Subject",
+            "type": "text"
+          },
+          {
+            "key": "message",
+            "label": "Message",
+            "type": "text"
+          }
+        ]
+      },
+      "actionFields": [
+        {
+          "key": "to",
+          "label": "To",
+          "required": true,
+          "type": "email"
+        },
+        {
+          "key": "subject",
+          "label": "Subject",
+          "required": true,
+          "type": "text"
+        },
+        {
+          "key": "body",
+          "label": "Message",
+          "required": true,
+          "type": "text"
+        }
+      ]
     },
-    "expected": { "category": "missing_required_field", "supported": true, "candidateIds": ["map:to:work_email"], "ceiling": "high" }
+    "expected": {
+      "category": "missing_required_field",
+      "supported": true,
+      "candidateIds": [
+        "map:to:work_email"
+      ],
+      "ceiling": "high"
+    }
   },
   {
     "id": "slack-empty-text-one-alternative",
     "note": "From the REAL Slack response for empty text (tests/fixtures/slack/empty_text.json). The trigger has another text field with a value.",
     "input": {
-      "error": { "category_hint": "missing_field", "code": "no_text", "message": "The message text is empty.", "field": "text", "retryable": false, "outcome": "not_executed" },
-      "config": { "channel": { "kind": "static", "value": "C0123456789" }, "text": { "kind": "mapped", "source": "note" } },
-      "resolved": { "channel": "C0123456789", "text": "" },
-      "triggerData": { "note": "", "summary": "Deploy finished" },
-      "triggerSchema": { "fields": [ { "key": "note", "label": "Note", "type": "text" }, { "key": "summary", "label": "Summary", "type": "text" } ] },
-      "actionFields": [ { "key": "channel", "label": "Channel", "required": true, "type": "text" }, { "key": "text", "label": "Message", "required": true, "type": "text" } ]
+      "error": {
+        "category_hint": "missing_field",
+        "code": "no_text",
+        "message": "The message text is empty.",
+        "field": "text",
+        "retryable": false,
+        "outcome": "not_executed"
+      },
+      "config": {
+        "channel": {
+          "kind": "static",
+          "value": "C0123456789"
+        },
+        "text": {
+          "kind": "mapped",
+          "source": "note"
+        }
+      },
+      "resolved": {
+        "channel": "C0123456789",
+        "text": ""
+      },
+      "triggerData": {
+        "note": "",
+        "summary": "Deploy finished"
+      },
+      "triggerSchema": {
+        "fields": [
+          {
+            "key": "note",
+            "label": "Note",
+            "type": "text"
+          },
+          {
+            "key": "summary",
+            "label": "Summary",
+            "type": "text"
+          }
+        ]
+      },
+      "actionFields": [
+        {
+          "key": "channel",
+          "label": "Channel",
+          "required": true,
+          "type": "text"
+        },
+        {
+          "key": "text",
+          "label": "Message",
+          "required": true,
+          "type": "text"
+        }
+      ]
     },
-    "expected": { "category": "missing_required_field", "supported": true, "candidateIds": ["map:text:summary"], "ceiling": "high" }
+    "expected": {
+      "category": "missing_required_field",
+      "supported": true,
+      "candidateIds": [
+        "map:text:summary"
+      ],
+      "ceiling": "high"
+    }
+  },
+  {
+    "id": "gmail-empty-subject-one-alternative",
+    "note": "ZapFix's own error for an empty subject (real Gmail would send it, tests/fixtures/gmail/empty_subject.json). The trigger has another text field with a value.",
+    "input": {
+      "error": {
+        "category_hint": "missing_field",
+        "code": "missing_required_field",
+        "message": "The subject is empty.",
+        "field": "subject",
+        "retryable": false,
+        "outcome": "not_executed"
+      },
+      "config": {
+        "to": {
+          "kind": "mapped",
+          "source": "email"
+        },
+        "subject": {
+          "kind": "mapped",
+          "source": "topic"
+        },
+        "body": {
+          "kind": "mapped",
+          "source": "message"
+        }
+      },
+      "resolved": {
+        "to": "ana@example.com",
+        "subject": "",
+        "body": "Hi there"
+      },
+      "triggerData": {
+        "email": "ana@example.com",
+        "topic": "",
+        "headline": "Weekly update",
+        "message": "Hi there"
+      },
+      "triggerSchema": {
+        "fields": [
+          {
+            "key": "email",
+            "label": "Email",
+            "type": "email"
+          },
+          {
+            "key": "topic",
+            "label": "Topic",
+            "type": "text"
+          },
+          {
+            "key": "headline",
+            "label": "Headline",
+            "type": "text"
+          },
+          {
+            "key": "message",
+            "label": "Message",
+            "type": "text"
+          }
+        ]
+      },
+      "actionFields": [
+        {
+          "key": "to",
+          "label": "To",
+          "required": true,
+          "type": "email"
+        },
+        {
+          "key": "subject",
+          "label": "Subject",
+          "required": true,
+          "type": "text"
+        },
+        {
+          "key": "body",
+          "label": "Message",
+          "required": true,
+          "type": "text"
+        }
+      ]
+    },
+    "expected": {
+      "category": "missing_required_field",
+      "supported": true,
+      "candidateIds": [
+        "map:subject:headline",
+        "map:subject:message"
+      ],
+      "ceiling": "medium"
+    }
+  },
+  {
+    "id": "drive-empty-name-one-alternative",
+    "note": "ZapFix's own error for an empty file name (real Drive would create a nameless file, tests/fixtures/google-drive/empty_name.json). The trigger has one other text field with a value.",
+    "input": {
+      "error": {
+        "category_hint": "missing_field",
+        "code": "missing_required_field",
+        "message": "The file name is empty.",
+        "field": "name",
+        "retryable": false,
+        "outcome": "not_executed"
+      },
+      "config": {
+        "name": {
+          "kind": "mapped",
+          "source": "title"
+        },
+        "content": {
+          "kind": "static",
+          "value": "hello"
+        }
+      },
+      "resolved": {
+        "name": "",
+        "content": "hello"
+      },
+      "triggerData": {
+        "title": "",
+        "filename": "notes.txt"
+      },
+      "triggerSchema": {
+        "fields": [
+          {
+            "key": "title",
+            "label": "Title",
+            "type": "text"
+          },
+          {
+            "key": "filename",
+            "label": "File name",
+            "type": "text"
+          }
+        ]
+      },
+      "actionFields": [
+        {
+          "key": "name",
+          "label": "File name",
+          "required": true,
+          "type": "text"
+        },
+        {
+          "key": "content",
+          "label": "Content",
+          "required": false,
+          "type": "text"
+        }
+      ]
+    },
+    "expected": {
+      "category": "missing_required_field",
+      "supported": true,
+      "candidateIds": [
+        "map:name:filename"
+      ],
+      "ceiling": "high"
+    }
   }
 ]
