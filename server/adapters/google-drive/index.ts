@@ -84,6 +84,16 @@ export function createGoogleDriveAdapter(fetchFn: typeof fetch = fetch): AppAdap
         });
       }
 
+      // Real Drive accepts an empty name and creates a nameless file, so it would never fail. ZapFix treats it as a
+      // missing required field (before any call) so the debugger can explain it and offer a fix.
+      if ((values.name ?? "").trim() === "") {
+        return fail(summary, {
+          category_hint: "missing_field", code: "missing_required_field", field: "name",
+          message: "The file name is empty.",
+          retryable: false, outcome: "not_executed",
+        });
+      }
+
       const boundary = `zapfix-${randomBytes(16).toString("hex")}`;
       const body = [
         `--${boundary}`,

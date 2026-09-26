@@ -1,0 +1,27 @@
+{
+  "scenario": "empty_text",
+  "description": "The message text is empty.",
+  "recorded_at": "2026-09-26",
+  "request_shape": {
+    "channel": "provided",
+    "text": "empty"
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "ok": false,
+      "error": "no_text"
+    }
+  },
+  "mapped": {
+    "ok": false,
+    "error": {
+      "code": "no_text",
+      "message": "The message text is empty.",
+      "retryable": false,
+      "outcome": "not_executed",
+      "category_hint": "missing_field",
+      "field": "text"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "scenario": "empty_subject",
+  "description": "The subject is empty.",
+  "recorded_at": "2026-09-26",
+  "request_shape": {
+    "to": "provided",
+    "subject": "empty",
+    "body": "provided"
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "id": "[id]",
+      "threadId": "[id]",
+      "labelIds": [
+        "SENT"
+      ]
+    }
+  },
+  "mapped": {
+    "ok": true
+  }
+}

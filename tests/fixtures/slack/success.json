@@ -1,0 +1,20 @@
+{
+  "scenario": "success",
+  "description": "A message is posted to a channel the app can post to.",
+  "recorded_at": "2026-09-26",
+  "request_shape": {
+    "channel": "provided",
+    "text": "provided"
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "ok": true,
+      "channel": "C0000000000",
+      "ts": "1700000000.000000"
+    }
+  },
+  "mapped": {
+    "ok": true
+  }
+}

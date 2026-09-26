@@ -1,0 +1,38 @@
+{
+  "scenario": "invalid_to",
+  "description": "The recipient is not an email address.",
+  "recorded_at": "2026-09-26",
+  "request_shape": {
+    "to": "provided",
+    "subject": "provided",
+    "body": "provided"
+  },
+  "response": {
+    "status": 400,
+    "body": {
+      "error": {
+        "code": 400,
+        "message": "Invalid To header",
+        "errors": [
+          {
+            "message": "Invalid To header",
+            "domain": "global",
+            "reason": "invalidArgument"
+          }
+        ],
+        "status": "INVALID_ARGUMENT"
+      }
+    }
+  },
+  "mapped": {
+    "ok": false,
+    "error": {
+      "code": "invalidArgument",
+      "message": "Invalid To header",
+      "retryable": false,
+      "outcome": "not_executed",
+      "category_hint": "invalid_value",
+      "field": "to"
+    }
+  }
+}

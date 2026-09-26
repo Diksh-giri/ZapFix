@@ -39,3 +39,4 @@ and the TDD must be updated in the same PR. Full reasoning: TDD sections 6 and 2
 | 032 | Google 7-day limit | Stay in testing mode; plan reconnects around sessions |
 | 033 | Security | TDD section 19 |
 | 034 | Build order | Calendar end to end first, then Slack, then Sheets |
+| 035 | Empty required values | Real Drive accepts an empty file name and real Gmail sends an empty subject (recorded 2026-09-26). The adapters treat these as a missing-field failure before any call, so the debugger can explain and fix them. Decided by Dikshyant; James to confirm in review |

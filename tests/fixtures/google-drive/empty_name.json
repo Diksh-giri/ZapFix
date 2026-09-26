@@ -1,0 +1,18 @@
+{
+  "scenario": "empty_name",
+  "description": "The file name is empty.",
+  "recorded_at": "2026-09-26",
+  "request_shape": {
+    "name": "empty",
+    "content": "provided"
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "id": "[id]"
+    }
+  },
+  "mapped": {
+    "ok": true
+  }
+}
