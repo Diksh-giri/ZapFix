@@ -29,7 +29,7 @@ In Supabase Authentication settings:
 
 1. Disable public user sign-ups. ZapFix creates the Supabase Auth user server-side only after the email passes the invite check.
 2. Add `http://localhost:3000/auth/confirm` and the deployed `/auth/confirm` URL to the redirect allow list.
-3. Set the magic-link email template link to:
+3. The default PKCE email link is supported. If you customize the magic-link email template, use:
 
    ```text
    {{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=email
@@ -61,7 +61,7 @@ After Supabase verifies the link, ZapFix checks the invite again and changes its
 - A test-double adapter (`server/adapters/fake`) so the whole loop can be built before the real Google and Slack adapters exist. It is a test tool, not the product (Decision #001).
 
 ## What is NOT built yet
-Sign-in and invite gate (T3), connections and the real adapters (T9, T11, T25, T26), run orchestration (T12), the other two diagnosis rules (T13), proposal and confirm transaction (T14), the AI client and prompt tuning (T22, T23), all real screens (T16 to T21). Search the code for `TODO(T` to find each one.
+The remaining connection and adapter work, the other two diagnosis rules (T13), proposal and confirm transaction (T14), the AI client and prompt tuning (T22, T23), and all real screens (T16 to T21). Search the code for `TODO(T` to find each one.
 
 ## Structure
 ```
