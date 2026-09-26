@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertRetryAllowed, effectiveStatus, idempotencyKey } from "@/server/runs/engine";
+import { REPAIR_LIMIT, assertCanDiagnose, assertRetryAllowed, effectiveStatus, idempotencyKey } from "@/server/runs/engine";
 
 const now = new Date("2026-09-23T12:00:00Z");
 const STALE = 90_000;
@@ -28,5 +28,31 @@ describe("run guards (Decision #010, safety test 11)", () => {
 
   it("builds a stable idempotency key", () => {
     expect(idempotencyKey("r1", "action", 2)).toBe("r1:action:2");
+  });
+});
+
+describe("repair limit (Decision #007, safety test 10)", () => {
+  it("allows a diagnosis while fewer than two repairs have failed", () => {
+    expect(() => assertCanDiagnose(0)).not.toThrow();
+    expect(() => assertCanDiagnose(1)).not.toThrow();
+  });
+
+  it("refuses new diagnoses and proposals after two applied-but-unsuccessful repairs", () => {
+    for (const count of [2, 3, 10]) {
+      expect(() => assertCanDiagnose(count)).toThrowError(expect.objectContaining({ code: "repair_limit_reached", status: 409 }));
+    }
+  });
+
+  it("says why in plain words and points to manual mode", () => {
+    try {
+      assertCanDiagnose(2);
+    } catch (e) {
+      expect((e as Error).message).toMatch(/two/i);
+      expect((e as Error).message).toMatch(/manual|yourself|by hand/i);
+    }
+  });
+
+  it("the limit is exactly two", () => {
+    expect(REPAIR_LIMIT).toBe(2);
   });
 });

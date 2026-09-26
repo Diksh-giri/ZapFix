@@ -3,6 +3,17 @@ import { AppError, toErrorBody } from "@/lib/errors";
 import { getSessionUser, type SessionUser } from "@/server/access/session";
 
 /**
+ * What may be logged about an unexpected error: its type and a short code (for example a Postgres code such as
+ * "23505"). NEVER its message, cause or fields: those can hold tokens, request bodies or a person's data
+ * (a database error can quote the offending value). AGENTS.md section 10, rule 2.
+ */
+function describeForLog(err: unknown): { name: string; code?: string } {
+  const name = err instanceof Error && /^[A-Za-z0-9_]{1,60}$/.test(err.name) ? err.name : "UnknownError";
+  const code = (err as { code?: unknown } | null)?.code;
+  return typeof code === "string" && /^[A-Za-z0-9_.-]{1,40}$/.test(code) ? { name, code } : { name };
+}
+
+/**
  * Every route handler goes through apiRoute (TDD section 12, "Request handling"):
  * (1) read session (2) validate body with Zod (3) call the handler (4) return JSON or the
  * standard error body. Ownership checks and rate limits happen inside the handler/service.
@@ -41,7 +52,7 @@ export function apiRoute<B = undefined>(
       return result === undefined ? new Response(null, { status: 204 }) : Response.json(result);
     } catch (err) {
       if (err instanceof AppError) return Response.json(toErrorBody(err), { status: err.status });
-      console.error("Unhandled error", err instanceof Error ? err.message : "unknown"); // never log payloads or tokens
+      console.error("Unhandled error", describeForLog(err));
       return Response.json(toErrorBody(new AppError("internal", "Something went wrong.")), { status: 500 });
     }
   };

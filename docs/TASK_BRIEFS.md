@@ -133,7 +133,7 @@ Owners: **D** = Dikshyant (safety core + AI client), **J** = James (experience, 
 **Watch out:** never propose a fix that maps to an empty value. Rules produce **only valid** candidates; the AI never widens the list.
 
 ### T14. Proposal, one-step confirm, restore (D, XL)
-**Depends on:** T6, T13. **Status:** Partly: `applyFieldChange`, `assertChangeMatchesApproval`, `hasManualEditConflict`, `summaryHash` done and tested.
+**Depends on:** T6, T13. **Status:** Code done and unit-tested (2026-09-26), branch `d/T14-proposals`: `planProposal`/`createProposal` (no fix for unsupported, AI unavailable, Low confidence, off-list or no-op choices; supersedes older pending; only existing settings), `buildApprovalSummary`, `decideProposal`, `confirmProposal` (Appendix E in one transaction, hand edits expire the proposal), `restoreChange` (most-recent-first, `manual_edit_conflict`), the Drizzle store (`server/proposals/drizzle-store.ts`, row locks) and the three routes. **Not yet run on a real database:** `tests/integration/proposals-db.test.ts` (safety tests 5 and 6, concurrent confirms) needs `DB_URL=<scratch> CONFIRM_SCRATCH=yes npx vitest run tests/integration` on zapfix-scratch. **Waiting on T13:** nothing calls `createProposal` yet; the diagnosis endpoint must call it (`createProposal({ store: getProposalStore() }, { diagnosis, workflowId, config, configVersion })`) and return the proposal with a `summaryHash` per option (build it with `buildApprovalSummary` + `summaryHash`; never in the browser).
 **Start here:** `server/changes/applier.ts`, `server/proposals/summary.ts`, `db/policies/001_integrity.sql`, `app/api/proposals/**`, `app/api/config-changes/[id]/restore`, Appendix E below.
 **Build:**
 1. **Create proposal** from a diagnosis: `kind` = `config_change` (with `field_path`, `current_value`, `proposed_value`, `valid_options` from the candidates, `expected_effect`, `base_config_version`) or `reconnect_guidance` (no approval row; the UI shows Reconnect). Supersede older `pending` proposals. No proposal when confidence is Low or no candidate was selected.
@@ -230,6 +230,7 @@ Owners: **D** = Dikshyant (safety core + AI client), **J** = James (experience, 
 Use T9's machinery with provider `slack` (OAuth, bot token, encrypted). Adapter `post_message` (channel, text). Slack has no native duplicate protection: rely on the one-success and uncertain-outcome rules. Map real error codes to `StandardError` (channel not found, not in channel, revoked/invalid token -> auth). Save fixtures, add rules coverage and eval cases, add an e2e test. **Acceptance:** full loop on Slack.
 
 ### Gmail and Drive adapters (D)
+**Fixture recorders written (2026-09-26), not yet run:** `GMAIL_TEST_TO=<your test address> npx tsx scripts/record-gmail-fixtures.ts` (sends one real email; delete it from Sent afterwards) and `npx tsx scripts/record-drive-fixtures.ts` (creates and deletes its own files). Both need a TEST Google account and the dev server stopped. Then review `tests/fixtures/gmail/` and `tests/fixtures/google-drive/`, add rule/eval cases, and remove the two `TODO(T11)` comments.
 **Status:** Adapter code done and unit-tested (2026-09-24), sharing `server/adapters/google-http.ts` with Calendar. Gmail `send_email` (`users.messages.send`, scope `gmail.send`; a line break in the recipient or subject is refused to stop header injection) and Drive `create_file` (multipart `files.create`, scope `drive.file`). Neither API has usable idempotency (Gmail none; Drive only via a separate `generateIds` call that returns fresh ids), so both rely on the one-success and uncertain-outcome rules. `gmail` and `google_drive` are now in `APP_IDS` and the registry; both use the `google` provider connection. Still to do: real fixtures with a test account (recorder scripts in the style of Calendar), rules coverage and eval cases (James), an e2e test.
 
 ### T26. Google Sheets (J, M)
@@ -267,9 +268,11 @@ Tasks, survey, and metric queries for a small tester group. Targets (PRD): 80% o
 ## Phase 8: Deployment (Both)
 
 ### T31. Production setup
+**Status:** Written up as a step-by-step runbook in `docs/LAUNCH.md` (2026-09-26). Nothing has been created in production yet.
 Production Supabase project (disable public sign-up, load invites, apply migrations and policies), Vercel production env vars (server-only), Google consent screen in Testing with all testers added, Slack app with the narrowest bot scopes, encryption key and rotation plan, plan/terms check.
 
 ### T32. Launch checklist
+**Status:** Checklist and tester briefing drafted in `docs/LAUNCH.md`; the vendor-terms items are marked CHECK and are not verified.
 Confirm vendor terms (AI provider data retention, Vercel plan terms for this use, Supabase free-tier limits and invite-only settings); all eleven safety tests pass; live smoke run per app; tester briefing (real accounts warning; use a test calendar, channel and sheet; reconnect Google before sessions); then invite testers.
 
 ---
