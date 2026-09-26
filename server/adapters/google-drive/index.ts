@@ -13,8 +13,8 @@ import { missingRequiredMappings } from "../types";
  * one-success-per-step rule and the uncertain-outcome rule: a timeout or dropped connection is "uncertain" and a retry
  * then needs explicit confirmation.
  *
- * Values are sent as they are so Drive's real behavior gets recorded.
- * TODO(T11): confirm Drive's real responses (for example an empty name) against recorded fixtures.
+ * Values are sent as they are, EXCEPT an empty name: real Drive accepts it and creates a nameless file
+ * (tests/fixtures/google-drive/, recorded 2026-09-26), so it is refused before any call (decision 035).
  */
 const ENDPOINT = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id";
 

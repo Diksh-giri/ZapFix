@@ -7,6 +7,3 @@ export function getTokenKey(): { key: Buffer; version: number } {
   if (!raw) throw new Error("TOKEN_ENCRYPTION_KEY is not set.");
   return { key: parseKey(raw), version: Number(process.env.TOKEN_KEY_VERSION ?? "1") };
 }
-
-// TODO(T9): Google + Slack OAuth start/callback, save/load encrypted tokens in
-// private.connection_secrets, quiet renewal, mark connection "needs_reconnect" when renewal fails.
