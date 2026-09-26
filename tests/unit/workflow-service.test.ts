@@ -3,8 +3,8 @@ import type { ActionConfig } from "@/lib/schemas/workflow-config";
 import { fakeAdapter } from "@/server/adapters/fake";
 import {
   createWorkflowService,
-  type WorkflowCreateReadStore,
   type WorkflowRecord,
+  type WorkflowStore,
 } from "@/server/workflows/service";
 
 const USER = "user-1";
@@ -18,8 +18,9 @@ const validConfig: ActionConfig = {
 };
 
 let rows: WorkflowRecord[];
+let expiredFor: string[];
 
-function memoryStore(): WorkflowCreateReadStore {
+function memoryStore(): WorkflowStore {
   return {
     async getConnection(id, userId) {
       if (id === "conn-google" && userId === USER) return { provider: "google" };
@@ -45,6 +46,17 @@ function memoryStore(): WorkflowCreateReadStore {
     async get(id, userId) {
       return rows.find((row) => row.id === id && row.userId === userId);
     },
+    async update(input) {
+      const row = rows.find((item) => item.id === input.id && item.userId === input.userId);
+      if (!row) return "not_found";
+      if (row.configVersion !== input.expectedConfigVersion) return "version_conflict";
+      if (input.name !== undefined) row.name = input.name;
+      if (input.actionConfig !== undefined) row.actionConfig = input.actionConfig;
+      row.configVersion += 1;
+      row.lastModifiedBy = "user";
+      expiredFor.push(row.id);
+      return row;
+    },
   };
 }
 
@@ -58,6 +70,7 @@ function service() {
 
 beforeEach(() => {
   rows = [];
+  expiredFor = [];
 });
 
 describe("workflow service catalog", () => {
@@ -140,5 +153,69 @@ describe("workflow service create and read", () => {
     expect(await workflowService.list(USER)).toHaveLength(1);
     expect(await workflowService.get("wf-1", USER)).toMatchObject({ name: "Mine" });
     await expect(workflowService.get("wf-other", USER)).rejects.toMatchObject({ code: "not_found" });
+  });
+});
+
+describe("workflow service update", () => {
+  async function createWorkflow() {
+    return service().create(USER, {
+      name: "Before",
+      app: "google_calendar",
+      actionKey: "create_event",
+      connectionId: "conn-google",
+      triggerSchema,
+      actionConfig: validConfig,
+    });
+  }
+
+  it("updates at the expected version and expires pending proposals", async () => {
+    const created = await createWorkflow();
+
+    const updated = await service().update(created.id, USER, {
+      name: "After",
+      expectedConfigVersion: 1,
+    });
+
+    expect(updated).toMatchObject({
+      name: "After",
+      configVersion: 2,
+      lastModifiedBy: "user",
+    });
+    expect(expiredFor).toEqual([created.id]);
+  });
+
+  it("reports a version conflict without changing or expiring anything", async () => {
+    const created = await createWorkflow();
+
+    await expect(service().update(created.id, USER, {
+      name: "After",
+      expectedConfigVersion: 2,
+    })).rejects.toMatchObject({ code: "version_conflict", status: 409 });
+
+    expect(created).toMatchObject({ name: "Before", configVersion: 1 });
+    expect(expiredFor).toEqual([]);
+  });
+
+  it("validates a replacement action configuration before updating", async () => {
+    const created = await createWorkflow();
+
+    await expect(service().update(created.id, USER, {
+      actionConfig: {},
+      expectedConfigVersion: 1,
+    })).rejects.toMatchObject({ code: "validation_failed", status: 422 });
+
+    expect(created.actionConfig).toEqual(validConfig);
+    expect(expiredFor).toEqual([]);
+  });
+
+  it("does not reveal or update another user's workflow", async () => {
+    const created = await createWorkflow();
+
+    await expect(service().update(created.id, OTHER, {
+      name: "Stolen",
+      expectedConfigVersion: 1,
+    })).rejects.toMatchObject({ code: "not_found", status: 404 });
+
+    expect(created.name).toBe("Before");
   });
 });

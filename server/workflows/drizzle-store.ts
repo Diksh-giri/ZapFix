@@ -1,11 +1,11 @@
 import { and, desc, eq } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
-import { connections, workflows } from "@/db/schema";
+import { connections, proposals, workflows } from "@/db/schema";
 import type * as schema from "@/db/schema";
 import { AppError } from "@/lib/errors";
 import type { AppId, Provider } from "@/lib/types";
 import { ActionConfigSchema, TriggerSchemaSchema } from "@/lib/schemas/workflow-config";
-import type { WorkflowCreateReadStore, WorkflowRecord } from "./service";
+import type { WorkflowRecord, WorkflowStore } from "./service";
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -31,7 +31,7 @@ function asWorkflow(row: typeof workflows.$inferSelect): WorkflowRecord {
   };
 }
 
-export function createDrizzleWorkflowStore(db: Database): WorkflowCreateReadStore {
+export function createDrizzleWorkflowStore(db: Database): WorkflowStore {
   return {
     async getConnection(id, userId) {
       const [row] = await db
@@ -64,6 +64,47 @@ export function createDrizzleWorkflowStore(db: Database): WorkflowCreateReadStor
         .where(and(eq(workflows.id, id), eq(workflows.userId, userId)))
         .limit(1);
       return row ? asWorkflow(row) : undefined;
+    },
+
+    async update(input) {
+      return db.transaction(async (tx) => {
+        const [current] = await tx
+          .select({ configVersion: workflows.configVersion })
+          .from(workflows)
+          .where(and(eq(workflows.id, input.id), eq(workflows.userId, input.userId)))
+          .limit(1);
+        if (!current) return "not_found" as const;
+        if (current.configVersion !== input.expectedConfigVersion) {
+          return "version_conflict" as const;
+        }
+
+        const [updated] = await tx
+          .update(workflows)
+          .set({
+            ...(input.name !== undefined ? { name: input.name } : {}),
+            ...(input.actionConfig !== undefined ? { actionConfig: input.actionConfig } : {}),
+            configVersion: current.configVersion + 1,
+            lastModifiedBy: "user",
+            updatedAt: new Date(),
+          })
+          .where(and(
+            eq(workflows.id, input.id),
+            eq(workflows.userId, input.userId),
+            eq(workflows.configVersion, input.expectedConfigVersion),
+          ))
+          .returning();
+        if (!updated) return "version_conflict" as const;
+
+        await tx
+          .update(proposals)
+          .set({ status: "expired" })
+          .where(and(
+            eq(proposals.workflowId, input.id),
+            eq(proposals.status, "pending"),
+          ));
+
+        return asWorkflow(updated);
+      });
     },
   };
 }

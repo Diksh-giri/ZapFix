@@ -32,13 +32,8 @@ export interface WorkflowStore {
   }): Promise<"not_found" | "version_conflict" | WorkflowRecord>;
 }
 
-export type WorkflowCreateReadStore = Pick<
-  WorkflowStore,
-  "getConnection" | "create" | "list" | "get"
->;
-
 export interface WorkflowServiceDeps {
-  store: WorkflowCreateReadStore;
+  store: WorkflowStore;
   getAdapter: (app: AppId) => AppAdapter;
   listAdapters: () => AppAdapter[];
 }
@@ -50,6 +45,12 @@ export interface CreateWorkflowInput {
   connectionId: string;
   triggerSchema: TriggerSchema;
   actionConfig: ActionConfig;
+}
+
+export interface UpdateWorkflowInput {
+  name?: string;
+  actionConfig?: ActionConfig;
+  expectedConfigVersion: number;
 }
 
 function validateConfig(adapter: AppAdapter, actionKey: string, actionConfig: ActionConfig): void {
@@ -85,6 +86,25 @@ export function createWorkflowService(deps: WorkflowServiceDeps) {
       const workflow = await deps.store.get(id, userId);
       if (!workflow) throw new AppError("not_found", "Workflow not found.");
       return workflow;
+    },
+
+    async update(id: string, userId: string, input: UpdateWorkflowInput): Promise<WorkflowRecord> {
+      const current = await deps.store.get(id, userId);
+      if (!current) throw new AppError("not_found", "Workflow not found.");
+
+      if (input.actionConfig !== undefined) {
+        validateConfig(deps.getAdapter(current.app), current.actionKey, input.actionConfig);
+      }
+
+      const updated = await deps.store.update({ id, userId, ...input });
+      if (updated === "not_found") throw new AppError("not_found", "Workflow not found.");
+      if (updated === "version_conflict") {
+        throw new AppError(
+          "version_conflict",
+          "This workflow changed after you opened it. Refresh and try again.",
+        );
+      }
+      return updated;
     },
   };
 }
