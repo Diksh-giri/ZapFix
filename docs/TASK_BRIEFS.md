@@ -25,9 +25,9 @@ Owners: **D** = Dikshyant (safety core + AI client), **J** = James (experience, 
 **Watch out:** never share the service-role key with the browser or commit it. Google test users must be added or sign-in shows "access blocked".
 
 ### T3. Sign-in and invite gate (J, M)
-**Depends on:** T2. **Status:** Not started (`server/access/invite.ts` stub, placeholder page).
+**Depends on:** T2. **Status:** Done (2026-09-25): invite-gated Supabase magic-link sign-in verified against the dev project for invited, unknown, revoked and sign-out cases.
 **Goal:** only invited emails can sign in; each user sees only their own data.
-**Start here:** `server/access/session.ts` (done), `server/access/invite.ts` (`isInvited` returns false), `app/sign-in/page.tsx`, `db/schema/index.ts` (`invites`).
+**Start here:** `server/access/session.ts`, `server/access/invite.ts`, `app/sign-in/page.tsx`, `app/auth/confirm/route.ts`, `db/schema/index.ts` (`invites`).
 **Build:**
 1. Supabase Auth email sign-in (ask the human whether to use email magic link or email+password; magic link avoids password handling).
 2. `isInvited(email)`: look up `invites` where status in `invited`/`active`; refuse `revoked` or unknown. Mark `invited` -> `active` on first sign-in.
