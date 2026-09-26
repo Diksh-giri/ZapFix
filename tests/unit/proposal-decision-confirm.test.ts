@@ -21,7 +21,7 @@ function expectUntouched(store: MemoryProposalStore, proposalStatus = "pending")
   expect(store.all().find((p) => p.id === "prop-1")?.status).toBe(proposalStatus);
 }
 
-describe("decideProposal (reject or exit)", () => {
+describe("decideProposal (reject or exit; safety test 1: no change without approval)", () => {
   it.each(["rejected", "exited"] as const)("records %s, closes the proposal and changes no setting", async (decision) => {
     const store = setup();
     await expect(decide(store, decision)).resolves.toEqual({ status: "decided" });
@@ -141,7 +141,7 @@ describe("confirmProposal: the approved change", () => {
   });
 });
 
-describe("confirmProposal: what it refuses (nothing is written)", () => {
+describe("confirmProposal: what it refuses (nothing is written; safety tests 1 and 2)", () => {
   it("refuses an option that is not in the valid options", async () => {
     const store = setup();
     expect(await code(confirm(store, { selectedOptionId: "map:attendee_email:made_up" }))).toBe("validation_failed");

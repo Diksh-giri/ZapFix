@@ -1,9 +1,6 @@
 import { and, eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { approvals, configChanges, diagnoses, events, proposals, runs, stepAttempts, workflows } from "@/db/schema";
-import * as schema from "@/db/schema";
 import { AppError } from "@/lib/errors";
 import type { ActionConfig } from "@/lib/schemas/workflow-config";
 import { confirmProposal } from "@/server/proposals/confirm";
@@ -14,28 +11,15 @@ import { restoreChange } from "@/server/proposals/restore";
 import type { ProposalStore, ProposalTx } from "@/server/proposals/store";
 import { buildApprovalSummary, summaryHash } from "@/server/proposals/summary";
 import { config, diagnosis, failure } from "../unit/_support/proposal-fixtures";
+import { OTHER_USER, USER, db, resetUsers, scratchEnabled, sql } from "./_support/scratch-db";
 
-/**
- * Proposal, confirm and restore against a REAL Postgres, with the real triggers (safety tests 5 and 6).
- *
- * SCRATCH DATABASE ONLY. It empties auth.users (and everything hanging off it), like tests/db/safety.sql.
- * It is skipped unless BOTH are set:  DB_URL=<scratch database>  CONFIRM_SCRATCH=yes
- * The scratch database must already have the migrations applied (npm run db:migrate, or tests/db/run.sh once).
- * Never point DB_URL at zapfix-dev or production.
- */
-const url = process.env.DB_URL;
-// Never the app's own database (DATABASE_URL, zapfix-dev): refuse even if someone sets both.
-const enabled = Boolean(url) && process.env.CONFIRM_SCRATCH === "yes" && url !== process.env.DATABASE_URL;
-
-const USER = "00000000-0000-4000-8000-0000000000a1";
-const OTHER_USER = "00000000-0000-4000-8000-0000000000a2";
+/** Proposal, confirm and restore against a REAL Postgres, with the real triggers (safety tests 5 and 6). Scratch database only: see _support/scratch-db.ts. */
 const WORKFLOW = "10000000-0000-4000-8000-000000000001";
 const RUN = "20000000-0000-4000-8000-000000000001";
 const ATTEMPT = "30000000-0000-4000-8000-000000000001";
 const DIAGNOSIS = "40000000-0000-4000-8000-000000000001";
 
-const sql = enabled ? postgres(url!, { prepare: false, max: 5 }) : undefined;
-const db = sql ? drizzle(sql, { schema }) : undefined;
+const enabled = scratchEnabled;
 const now = () => new Date();
 
 afterAll(async () => {
@@ -43,8 +27,7 @@ afterAll(async () => {
 });
 
 async function reset() {
-  await sql!`truncate auth.users cascade`;
-  await sql!`insert into auth.users(id) values (${USER}), (${OTHER_USER})`;
+  await resetUsers();
   await db!.insert(workflows).values({
     id: WORKFLOW,
     userId: USER,

@@ -47,7 +47,7 @@ async function applySecondChange(store: MemoryProposalStore): Promise<string> {
 const restore = (store: MemoryProposalStore, changeId: string, over: Partial<Parameters<typeof restoreChange>[1]> = {}) =>
   restoreChange({ store, now }, { changeId, userId: "user-1", ...over });
 
-describe("restoreChange: the exact before value comes back", () => {
+describe("restoreChange: the exact before value comes back (safety test 6)", () => {
   it("puts the setting back exactly as it was and marks the change restored", async () => {
     const store = setup();
     const changeId = await applyFirstChange(store);
@@ -86,7 +86,7 @@ describe("restoreChange: the exact before value comes back", () => {
   });
 });
 
-describe("restoreChange: manual edit conflict", () => {
+describe("restoreChange: manual edit conflict (safety test 6)", () => {
   async function editedByHand() {
     const store = setup();
     const changeId = await applyFirstChange(store);

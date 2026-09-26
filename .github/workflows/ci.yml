@@ -40,3 +40,14 @@ jobs:
         run: tests/db/run.sh
         env:
           DB_URL: postgres://postgres:pw@localhost:5432/zapfix_test
+      # The migrations are now applied to this throwaway database, so the real-database code paths can run too.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Real-database tests (confirm all-or-nothing, restore, simultaneous retries)
+        run: npx vitest run tests/integration --no-file-parallelism
+        env:
+          DB_URL: postgres://postgres:pw@localhost:5432/zapfix_test
+          CONFIRM_SCRATCH: "yes"
