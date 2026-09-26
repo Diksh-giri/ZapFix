@@ -267,9 +267,11 @@ Tasks, survey, and metric queries for a small tester group. Targets (PRD): 80% o
 ## Phase 8: Deployment (Both)
 
 ### T31. Production setup
+**Status:** Written up as a step-by-step runbook in `docs/LAUNCH.md` (2026-09-26). Nothing has been created in production yet.
 Production Supabase project (disable public sign-up, load invites, apply migrations and policies), Vercel production env vars (server-only), Google consent screen in Testing with all testers added, Slack app with the narrowest bot scopes, encryption key and rotation plan, plan/terms check.
 
 ### T32. Launch checklist
+**Status:** Checklist and tester briefing drafted in `docs/LAUNCH.md`; the vendor-terms items are marked CHECK and are not verified.
 Confirm vendor terms (AI provider data retention, Vercel plan terms for this use, Supabase free-tier limits and invite-only settings); all eleven safety tests pass; live smoke run per app; tester briefing (real accounts warning; use a test calendar, channel and sheet; reconnect Google before sessions); then invite testers.
 
 ---
