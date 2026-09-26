@@ -96,6 +96,10 @@ describe("planProposal: when NO fix is offered", () => {
     expect(plan(diagnosisWith({}, "map:attendee_email:contact_email"), { ...config, attendee_email: { kind: "mapped", source: "contact_email" } })).toBeNull();
   });
 
+  it("returns nothing for a setting that does not exist yet, because restore needs a real 'before' value", () => {
+    expect(plan(diagnosisWith(), { title: config.title! })).toBeNull();
+  });
+
   it("drops candidates it cannot trust instead of repairing them", () => {
     const bad: Candidate[] = [
       { id: "bad-path", kind: "config_change", fieldPath: "trigger.email", proposedValue: { kind: "mapped", source: "x" }, description: "x" },

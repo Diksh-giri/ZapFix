@@ -18,7 +18,9 @@ function usableChange(candidate: Candidate, config: ActionConfig): (Candidate & 
   }
   const proposed = FieldMappingSchema.safeParse(candidate.proposedValue);
   if (!proposed.success) return undefined;
-  if (deepEqual(readFieldValue(config, candidate.fieldPath) ?? null, proposed.data)) return undefined; // changes nothing
+  const current = readFieldValue(config, candidate.fieldPath);
+  if (!current) return undefined; // only existing settings change: restore needs a real "before" value
+  if (deepEqual(current, proposed.data)) return undefined; // changes nothing
   return { ...candidate, fieldPath: candidate.fieldPath, proposedValue: proposed.data };
 }
 
@@ -61,7 +63,8 @@ export function planProposal(input: {
   const options = diagnosis.candidates.flatMap((c) => usableChange(c, config) ?? []);
   const chosen = options.find((o) => o.id === selectedId);
   if (!chosen?.proposedValue) return null;
-  const current = readFieldValue(config, chosen.fieldPath) ?? null;
+  const current = readFieldValue(config, chosen.fieldPath);
+  if (!current) return null;
 
   return {
     ...base,
