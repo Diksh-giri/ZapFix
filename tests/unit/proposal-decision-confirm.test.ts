@@ -4,7 +4,6 @@ import { confirmProposal } from "@/server/proposals/confirm";
 import { decideProposal } from "@/server/proposals/decision";
 import type { FailurePoint, MemoryProposalStore } from "@/server/proposals/memory-store";
 import { summaryHash } from "@/server/proposals/summary";
-import type { ProposalRecord } from "@/server/proposals/types";
 import { DEFAULT_ID, code, config, hashFor, now, setup } from "./_support/proposal-fixtures";
 
 const confirm = (store: MemoryProposalStore, over: Partial<Parameters<typeof confirmProposal>[1]> = {}) =>
