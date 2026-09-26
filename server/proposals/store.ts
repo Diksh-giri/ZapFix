@@ -73,11 +73,10 @@ export interface ProposalTx {
   audit: AuditStore;
 }
 
-/**
- * Persistence port for proposals. memory-store.ts is the test double.
- * TODO(T14): the Drizzle version of this store.
- */
+/** Persistence port for proposals. drizzle-store.ts is the real one; memory-store.ts is the test double. */
 export interface ProposalStore {
+  /** A plain read (no locks) of a proposal the user owns, for showing it. Undefined if unknown or not theirs. */
+  getContext(proposalId: string, userId: string): Promise<ProposalContext | undefined>;
   /**
    * In ONE step: mark every still-pending proposal of the workflow `superseded`, then save `draft`
    * as the new pending proposal (when there is one). A new diagnosis retires the old proposal even

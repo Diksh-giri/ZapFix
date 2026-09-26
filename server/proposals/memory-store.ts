@@ -193,6 +193,11 @@ export function createMemoryProposalStore(): MemoryProposalStore {
       failing = point;
     },
 
+    async getContext(proposalId, userId) {
+      const ctx = await makeTx(clone(state)).load(proposalId);
+      return ctx && ctx.workflow.userId === userId ? ctx : undefined;
+    },
+
     async replacePending(workflowId, draft: ProposalDraft | null) {
       for (const row of state.proposals) {
         if (row.workflowId === workflowId && row.status === "pending") row.status = "superseded";
