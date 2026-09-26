@@ -21,6 +21,30 @@ cp .env.example .env.local     # fill in values as each task needs them
 npm run dev                    # http://localhost:3000
 ```
 
+### Supabase magic-link sign-in
+
+ZapFix permits only emails listed in the `invites` table with status `invited` or `active`.
+
+In Supabase Authentication settings:
+
+1. Disable public user sign-ups. ZapFix creates the Supabase Auth user server-side only after the email passes the invite check.
+2. Add `http://localhost:3000/auth/confirm` and the deployed `/auth/confirm` URL to the redirect allow list.
+3. Set the magic-link email template link to:
+
+   ```text
+   {{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=email
+   ```
+
+Add testers through the Supabase SQL editor; use lowercase email addresses:
+
+```sql
+insert into public.invites (email, status)
+values ('tester@example.com', 'invited')
+on conflict (email) do update set status = 'invited';
+```
+
+After Supabase verifies the link, ZapFix checks the invite again and changes its status to `active`.
+
 | Command | What it does |
 | --- | --- |
 | `npm run check` | Type check + lint + unit tests. Run before every push |
