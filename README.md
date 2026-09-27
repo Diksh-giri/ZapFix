@@ -46,6 +46,7 @@ At sign-in ZapFix checks the password with Supabase first, then the invite. A wr
 | `npm run eval` | AI and rules evaluation set (evals/) |
 | `npm run e2e` | End-to-end tests (Playwright) |
 | `tests/db/run.sh` | Database safety tests against a scratch Postgres (needs `psql`) |
+| `npm run db:workflow-smoke -- --confirm --user-id <uuid> --connection-id <uuid>` | Non-destructive T10 persistence smoke test using an existing test user and Google connection |
 | `npm run db:generate` / `db:migrate` | Create and apply Drizzle migrations |
 
 ## What already works in this scaffold

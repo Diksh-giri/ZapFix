@@ -85,14 +85,14 @@ Owners: **D** = Dikshyant (safety core + AI client), **J** = James (experience, 
 **Watch out:** Google Testing mode: authorizations expire 7 days after consent. Use Google's current OAuth docs, not memory. Never log the code, tokens or secrets. Sensitive-scope classification must be confirmed before requesting scopes.
 
 ### T10. Workflow service (J, M)
-**Depends on:** T5, T8. **Status:** Code complete (2026-09-26): app catalog; owner-scoped workflow create, list, read, and version-safe update; pending-proposal expiry; and IANA time-zone date conversion. Unit and route integration tests pass. A real-database workflow smoke test remains before operational sign-off.
+**Depends on:** T5, T8. **Status:** Done (2026-09-26): app catalog; owner-scoped workflow create, list, read, and version-safe update; pending-proposal expiry; and IANA time-zone date conversion. Unit and route integration tests pass. Real-database verification passed with an active test Google connection: create starts at version 1; list and read are owner-scoped; updates increment the version; stale updates return `version_conflict`; and pending proposals expire without changing decided proposals.
 **Start here:** `lib/schemas/workflow-config.ts`, `lib/schemas/api.ts` (`CreateWorkflowRequest`, `PatchWorkflowRequest`), `server/workflows/resolve.ts`, `server/adapters/registry.ts`, `app/api/apps`, `app/api/workflows/**`.
 **Build:**
 1. `GET /api/apps`: return the catalog from `listAdapters()` (actions, fields, required flags).
 2. `POST /api/workflows`: validate body; `adapter.validateConfig(actionKey, config)` must return `[]`; verify `connectionId` belongs to the user; insert (`config_version` 1, `last_modified_by` 'user').
 3. `GET /api/workflows` and `GET /api/workflows/{id}`: owner only.
 4. `PATCH /api/workflows/{id}`: require `expectedConfigVersion`; on mismatch throw `AppError("version_conflict", ...)`; on success increment `config_version`, set `last_modified_by = 'user'`; also expire any `pending` proposals for that workflow (status `expired`).
-5. Handle `t.timeZone` in `date_to_rfc3339` (see TODO in `resolve.ts`) once the human confirms the time-zone behavior.
+5. Handle `t.timeZone` in `date_to_rfc3339`: interpret the date as midnight in its validated IANA time zone and convert that instant to RFC 3339 UTC.
 **Acceptance:** create, list, open, edit work with ownership checks; invalid mappings are refused with 422; version conflicts return 409; unit and integration tests.
 **Watch out:** never trust `user_id` from the body; use the session user. Transforms are a closed list (`date_to_rfc3339`, `trim`, `lowercase`).
 
