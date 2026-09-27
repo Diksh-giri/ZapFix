@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { oauthCallbackLogPattern } from "../../next.config";
 
 /** Safety test 8 (static part): the connect flow must not be able to log tokens, codes or secrets. */
 function files(dir: string): string[] {
@@ -27,5 +28,11 @@ describe("connections code never logs", () => {
     const text = sources.map((f) => readFileSync(f, "utf8")).join("\n");
     expect(text).not.toMatch(/new Error\(`[^`]*\$\{(code|token|secret|refreshToken|accessToken|clientSecret)\b/);
     expect(text).not.toMatch(/redirectTo[^;\n]*\$\{(code|token|secret)\b/);
+  });
+
+  it("suppresses framework request logs for OAuth callback query strings", () => {
+    expect(oauthCallbackLogPattern.test("/api/connections/slack/callback?code=temporary&state=temporary")).toBe(true);
+    expect(oauthCallbackLogPattern.test("/api/connections/google/callback?code=temporary&state=temporary")).toBe(true);
+    expect(oauthCallbackLogPattern.test("/api/connections/slack/start")).toBe(false);
   });
 });
