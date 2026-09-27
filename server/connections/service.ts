@@ -125,10 +125,8 @@ export function createConnectionsService(deps: ConnectionsDeps) {
         id: c.id,
         provider: c.provider,
         status: c.status,
-        scopes: c.scopes,
         accountLabel: c.accountLabel,
         connectedAt: c.connectedAt.toISOString(),
-        lastErrorCode: c.lastErrorCode,
         ageDays: Math.floor((now - c.connectedAt.getTime()) / DAY_MS),
         // Google apps in Testing mode lose their authorization 7 days after consent.
         reconnectBy:

@@ -5,7 +5,12 @@ import { ConnectionCard } from "@/components/ConnectionCard";
 import { Button } from "@/components/ui/button";
 import { disconnectConnection, loadConnections, startConnection } from "@/lib/connections-client";
 import type { OAuthNotice } from "@/lib/connections-page";
-import { connectionsPageReducer, getConnectionsSummary, initialConnectionsPageState } from "@/lib/connections-page";
+import {
+  acquireConnectionAction,
+  connectionsPageReducer,
+  getConnectionsSummary,
+  initialConnectionsPageState,
+} from "@/lib/connections-page";
 import { PROVIDERS, type Provider } from "@/lib/types";
 
 const LOAD_ERROR = "We could not load your connections. Check your connection and try again.";
@@ -19,6 +24,7 @@ export function ConnectionsScreen({
 }) {
   const [state, dispatch] = useReducer(connectionsPageReducer, initialConnectionsPageState);
   const providersInFlight = useRef(new Set<Provider>());
+  const actionInFlight = PROVIDERS.some((provider) => state.busyByProvider[provider] !== undefined);
 
   const refreshConnections = useCallback(async () => {
     dispatch({ type: "load_started" });
@@ -34,8 +40,7 @@ export function ConnectionsScreen({
   }, [refreshConnections]);
 
   async function connect(provider: Provider) {
-    if (providersInFlight.current.has(provider)) return;
-    providersInFlight.current.add(provider);
+    if (!acquireConnectionAction(providersInFlight.current, provider)) return;
     dispatch({ type: "action_started", provider, action: "connect" });
     try {
       window.location.assign(await startConnection(provider));
@@ -52,9 +57,7 @@ export function ConnectionsScreen({
   async function disconnect(provider: Provider, connectionId: string) {
     const providerName = provider === "google" ? "Google" : "Slack";
     if (!window.confirm(`Disconnect ${providerName}? Workflows using it will stop until you reconnect.`)) return;
-    if (providersInFlight.current.has(provider)) return;
-
-    providersInFlight.current.add(provider);
+    if (!acquireConnectionAction(providersInFlight.current, provider)) return;
     dispatch({ type: "action_started", provider, action: "disconnect" });
     try {
       await disconnectConnection(connectionId);
@@ -117,7 +120,7 @@ export function ConnectionsScreen({
               provider={provider}
               connection={connection}
               busyAction={state.busyByProvider[provider] ?? null}
-              disabled={state.loadStatus !== "ready"}
+              disabled={state.loadStatus !== "ready" || actionInFlight}
               showSlackHttpsWarning={provider === "slack" && showSlackHttpsWarning}
               error={state.errorByProvider[provider] ?? null}
               onConnect={() => void connect(provider)}

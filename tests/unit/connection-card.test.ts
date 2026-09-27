@@ -12,7 +12,6 @@ const googleConnection: ClientConnection = {
   connectedAt: "2026-09-26T12:00:00.000Z",
   ageDays: 1,
   reconnectBy: "2099-10-03T12:00:00.000Z",
-  lastErrorCode: null,
 };
 
 describe("getConnectionDisplayState", () => {
@@ -154,17 +153,17 @@ describe("ConnectionCard", () => {
     expect(html).not.toContain("Reconnect by");
   });
 
-  it("never renders internal scopes or provider error codes", () => {
+  it("renders only public connection details", () => {
     const html = renderToStaticMarkup(
       createElement(ConnectionCard, {
         provider: "google",
-        connection: { ...googleConnection, lastErrorCode: "secret_provider_error" },
+        connection: googleConnection,
         busyAction: null,
         ...actions,
       }),
     );
 
     expect(html).not.toContain("calendar.events.owned");
-    expect(html).not.toContain("secret_provider_error");
+    expect(html).not.toContain("Last error");
   });
 });

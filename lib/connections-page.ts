@@ -28,6 +28,12 @@ export const initialConnectionsPageState: ConnectionsPageState = {
   errorByProvider: {},
 };
 
+export function acquireConnectionAction(inFlight: Set<Provider>, provider: Provider): boolean {
+  if (inFlight.size > 0) return false;
+  inFlight.add(provider);
+  return true;
+}
+
 function withoutProvider<T>(record: Partial<Record<Provider, T>>, provider: Provider) {
   const next = { ...record };
   delete next[provider];

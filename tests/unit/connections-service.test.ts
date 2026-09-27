@@ -236,6 +236,8 @@ describe("listConnections", () => {
     const text = JSON.stringify(list);
     expect(text).not.toContain("r1");
     expect(text).not.toContain("ciphertext");
+    expect(list[0]).not.toHaveProperty("scopes");
+    expect(list[0]).not.toHaveProperty("lastErrorCode");
   });
 
   it("gives Slack no 7-day expiry", async () => {
