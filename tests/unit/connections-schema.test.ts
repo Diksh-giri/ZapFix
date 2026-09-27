@@ -6,15 +6,15 @@ const googleConnection = {
   provider: "google",
   status: "active",
   scopes: ["calendar.events.owned"],
+  lastErrorCode: "invalid_grant",
   accountLabel: "tester@example.com",
   connectedAt: "2026-09-26T12:00:00.000Z",
   ageDays: 1,
   reconnectBy: "2026-10-03T12:00:00.000Z",
-  lastErrorCode: null,
 };
 
 describe("ConnectionsResponseSchema", () => {
-  it("accepts the connection fields the UI needs and removes scopes", () => {
+  it("keeps only the public connection fields the UI needs", () => {
     const result = ConnectionsResponseSchema.parse({ connections: [googleConnection] });
 
     expect(result.connections[0]).toEqual({
@@ -25,9 +25,9 @@ describe("ConnectionsResponseSchema", () => {
       connectedAt: "2026-09-26T12:00:00.000Z",
       ageDays: 1,
       reconnectBy: "2026-10-03T12:00:00.000Z",
-      lastErrorCode: null,
     });
     expect(result.connections[0]).not.toHaveProperty("scopes");
+    expect(result.connections[0]).not.toHaveProperty("lastErrorCode");
   });
 
   it("accepts an empty connection list", () => {

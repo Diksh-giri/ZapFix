@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ConnectionsScreen } from "@/components/ConnectionsScreen";
 import {
+  acquireConnectionAction,
   connectionsPageReducer,
   getConnectionsSummary,
   getOAuthNotice,
@@ -19,8 +20,17 @@ const googleConnection: ClientConnection = {
   connectedAt: "2026-09-26T12:00:00.000Z",
   ageDays: 1,
   reconnectBy: "2099-10-03T12:00:00.000Z",
-  lastErrorCode: null,
 };
+
+describe("acquireConnectionAction", () => {
+  it("allows only one provider action at a time", () => {
+    const inFlight = new Set<"google" | "slack">();
+
+    expect(acquireConnectionAction(inFlight, "google")).toBe(true);
+    expect(acquireConnectionAction(inFlight, "slack")).toBe(false);
+    expect([...inFlight]).toEqual(["google"]);
+  });
+});
 
 describe("connectionsPageReducer", () => {
   it("moves from loading to a successful empty state", () => {

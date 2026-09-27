@@ -11,7 +11,6 @@ export const ClientConnectionSchema = z.object({
   connectedAt: z.string().datetime(),
   ageDays: z.number().int().nonnegative(),
   reconnectBy: z.string().datetime().nullable(),
-  lastErrorCode: z.string().nullable(),
 });
 
 export const ConnectionsResponseSchema = z.object({
