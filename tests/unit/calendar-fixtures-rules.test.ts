@@ -48,8 +48,36 @@ describe("real Google errors reach the right rule", () => {
     expect(c.candidates.map((x) => x.id)).toEqual(["map:attendee_email:backup_email"]);
   });
 
-  // For T13 (James): the adapter already returns what these rules need (see the TODOs in
-  // server/diagnosis/rules/expired-connection.ts and invalid-format.ts). Turn each into a real test when the rule is built.
-  it.todo("expired connection (fixture invalid_token: category_hint auth): classified as expired_connection with a reconnect_guidance candidate");
-  it.todo("bad date (fixture invalid_date_format: invalid_value, field start, value 03/15/2026): classified as invalid_format with a date_to_rfc3339 candidate");
+  it("expired connection: offers reconnect guidance without a configuration change", () => {
+    const c = diagnose("invalid_token", {
+      title: "T",
+      start: "2030-01-15T10:00:00Z",
+      end: "2030-01-15T11:00:00Z",
+      email: "a@example.com",
+    });
+    expect(c.category).toBe("expired_connection");
+    expect(c.candidates).toEqual([
+      {
+        id: "reconnect",
+        kind: "reconnect_guidance",
+        description: "Reconnect the app and try again",
+      },
+    ]);
+    expect(c.ceiling).toBe("high");
+  });
+
+  it("bad date: offers both interpretations of an ambiguous slash date", () => {
+    const c = diagnose("invalid_date_format", {
+      title: "T",
+      start: "03/15/2026",
+      end: "2030-01-15T11:00:00Z",
+      email: "a@example.com",
+    });
+    expect(c.category).toBe("invalid_format");
+    expect(c.candidates.map((candidate) => candidate.id)).toEqual([
+      "transform:start:MM/DD/YYYY",
+      "transform:start:DD/MM/YYYY",
+    ]);
+    expect(c.ceiling).toBe("medium");
+  });
 });

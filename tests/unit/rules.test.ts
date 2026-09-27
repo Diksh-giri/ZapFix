@@ -52,15 +52,74 @@ describe("missing required field rule (worked example, T13)", () => {
   });
 });
 
-describe("unsupported and ceiling (Decision #028)", () => {
-  it("returns unsupported with no candidates when no rule matches", async () => {
-    const input = await inputFor({ name: "Kickoff", email: "ana@example.com" }, { ...config, start: { kind: "static", value: "03/15/2026" } });
-    const c = classify(input); // invalid-format rule is a TODO (T13): unsupported is the safe outcome
+describe("invalid format rule", () => {
+  it("classifies an ambiguous slash date and offers only the two allowed date transforms", async () => {
+    const input = await inputFor(
+      { name: "Kickoff", email: "ana@example.com", meeting_date: "03/15/2026" },
+      { ...config, start: { kind: "mapped", source: "meeting_date" } },
+    );
+    const c = classify(input);
+    expect(c.category).toBe("invalid_format");
+    expect(c.candidates.map((candidate) => candidate.id)).toEqual([
+      "transform:start:MM/DD/YYYY",
+      "transform:start:DD/MM/YYYY",
+    ]);
+    expect(c.candidates.every((candidate) => candidate.fieldPath === "actionConfig.start")).toBe(true);
+    expect(c.ceiling).toBe("medium");
+  });
+
+  it("does not propose a format transform for an empty value", async () => {
+    const input = await inputFor(
+      { name: "Kickoff", email: "ana@example.com", meeting_date: "" },
+      { ...config, start: { kind: "mapped", source: "meeting_date" } },
+    );
+    input.error = { ...input.error, category_hint: "invalid_value", field: "start" };
+    const c = classify(input);
+    expect(c.category).toBe("invalid_format");
+    expect(c.candidates).toEqual([]);
+    expect(c.ceiling).toBe("low");
+  });
+
+  it("classifies an authentication failure as reconnect guidance without a config change", async () => {
+    const input = await inputFor({ name: "Kickoff", email: "" });
+    input.error = {
+      code: "authError",
+      message: "Invalid Credentials",
+      retryable: false,
+      outcome: "not_executed",
+      category_hint: "auth",
+    };
+    const c = classify(input);
+    expect(c.category).toBe("expired_connection");
+    expect(c.candidates).toEqual([
+      {
+        id: "reconnect",
+        kind: "reconnect_guidance",
+        description: "Reconnect the app and try again",
+      },
+    ]);
+    expect(c.ceiling).toBe("high");
+  });
+
+  it("keeps an unknown error unsupported and offers no fix", async () => {
+    const input = await inputFor({ name: "Kickoff", email: "" });
+    input.error = {
+      code: "channel_not_found",
+      message: "The requested channel does not exist.",
+      retryable: false,
+      outcome: "not_executed",
+      category_hint: "not_found",
+      field: "channel",
+    };
+    const c = classify(input);
     expect(c.category).toBe("unsupported");
     expect(c.candidates).toEqual([]);
     expect(c.ceiling).toBe("low");
   });
 
+});
+
+describe("confidence ceiling (Decision #028)", () => {
   it("sets the ceiling from the evidence", () => {
     const cand = (id: string) => ({ id, kind: "config_change" as const, description: id });
     expect(ceilingFor("unsupported", [cand("a")])).toBe("low");
