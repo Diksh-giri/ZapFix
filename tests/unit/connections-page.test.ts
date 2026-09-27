@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { ConnectionsScreen } from "@/components/ConnectionsScreen";
 import {
   connectionsPageReducer,
+  getConnectionsSummary,
   getOAuthNotice,
   initialConnectionsPageState,
   shouldShowSlackHttpsWarning,
@@ -98,7 +99,16 @@ describe("getOAuthNotice", () => {
   it("maps cancellation and callback failures without exposing provider details", () => {
     expect(getOAuthNotice({ error: "access_denied" })?.message).toContain("canceled");
     expect(getOAuthNotice({ error: "connect_failed" })?.message).toContain("could not be completed");
+    expect(getOAuthNotice({ error: "invalid_request" })?.message).toContain("expired or was invalid");
     expect(getOAuthNotice({ error: "unknown" })).toBeNull();
+  });
+});
+
+describe("getConnectionsSummary", () => {
+  it("describes empty, partial, and complete connection lists", () => {
+    expect(getConnectionsSummary(0)).toContain("No apps are connected");
+    expect(getConnectionsSummary(1)).toBe("One of two apps is connected.");
+    expect(getConnectionsSummary(2)).toBe("Google and Slack are connected.");
   });
 });
 

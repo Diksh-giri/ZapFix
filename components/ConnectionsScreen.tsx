@@ -4,7 +4,7 @@ import { useCallback, useEffect, useReducer, useRef } from "react";
 import { ConnectionCard } from "@/components/ConnectionCard";
 import { disconnectConnection, loadConnections, startConnection } from "@/lib/connections-client";
 import type { OAuthNotice } from "@/lib/connections-page";
-import { connectionsPageReducer, initialConnectionsPageState } from "@/lib/connections-page";
+import { connectionsPageReducer, getConnectionsSummary, initialConnectionsPageState } from "@/lib/connections-page";
 import { PROVIDERS, type Provider } from "@/lib/types";
 
 const LOAD_ERROR = "We could not load your connections. Check your connection and try again.";
@@ -65,14 +65,6 @@ export function ConnectionsScreen({
     }
   }
 
-  const connectionCount = state.connections.length;
-  const summary =
-    connectionCount === 0
-      ? "No apps are connected yet. Choose an app below to get started."
-      : connectionCount === PROVIDERS.length
-        ? "Google and Slack are connected."
-        : "One of two apps is connected.";
-
   return (
     <div className="space-y-6">
       <header>
@@ -110,7 +102,9 @@ export function ConnectionsScreen({
         </div>
       ) : null}
 
-      {state.loadStatus === "ready" ? <p className="text-sm text-neutral-600">{summary}</p> : null}
+      {state.loadStatus === "ready" ? (
+        <p className="text-sm text-neutral-600">{getConnectionsSummary(state.connections.length)}</p>
+      ) : null}
 
       <section className="grid gap-4" aria-label="Available connections">
         {PROVIDERS.map((provider) => {

@@ -92,3 +92,9 @@ export function shouldShowSlackHttpsWarning(location: { protocol: string; hostna
   const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
   return location.protocol !== "https:" && !isLocal;
 }
+
+export function getConnectionsSummary(connectionCount: number): string {
+  if (connectionCount === 0) return "No apps are connected yet. Choose an app below to get started.";
+  if (connectionCount >= 2) return "Google and Slack are connected.";
+  return "One of two apps is connected.";
+}

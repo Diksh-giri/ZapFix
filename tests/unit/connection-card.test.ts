@@ -31,6 +31,14 @@ describe("getConnectionDisplayState", () => {
   it("requires reconnection when the backend says the connection is revoked", () => {
     expect(getConnectionDisplayState({ ...googleConnection, status: "revoked" }, now)).toBe("reconnect_required");
   });
+
+  it("maps every backend connection status to a display state", () => {
+    expect(getConnectionDisplayState({ ...googleConnection, status: "active" }, now)).toBe("connected");
+    expect(getConnectionDisplayState({ ...googleConnection, status: "needs_reconnect" }, now)).toBe(
+      "reconnect_required",
+    );
+    expect(getConnectionDisplayState({ ...googleConnection, status: "revoked" }, now)).toBe("reconnect_required");
+  });
 });
 
 describe("ConnectionCard", () => {
@@ -122,6 +130,27 @@ describe("ConnectionCard", () => {
 
     expect(localHtml).not.toContain("Slack connections require HTTPS");
     expect(insecureDeploymentHtml).toContain("Slack connections require HTTPS outside local development.");
+  });
+
+  it("does not show Google expiration guidance for Slack", () => {
+    const html = renderToStaticMarkup(
+      createElement(ConnectionCard, {
+        provider: "slack",
+        connection: {
+          ...googleConnection,
+          id: "22222222-2222-4222-8222-222222222222",
+          provider: "slack",
+          accountLabel: "Test workspace",
+          reconnectBy: null,
+        },
+        busyAction: null,
+        ...actions,
+      }),
+    );
+
+    expect(html).toContain("Test workspace");
+    expect(html).not.toContain("seven days");
+    expect(html).not.toContain("Reconnect by");
   });
 
   it("never renders internal scopes or provider error codes", () => {

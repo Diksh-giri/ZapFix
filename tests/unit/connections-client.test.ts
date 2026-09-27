@@ -55,4 +55,14 @@ describe("connections client", () => {
     await expect(loadConnections(invalidResponse)).rejects.toThrow("invalid_response");
     await expect(startConnection("slack", unsafeRedirect)).rejects.toThrow("invalid_response");
   });
+
+  it("rejects failed OAuth start and disconnect requests", async () => {
+    const failedStart = vi.fn<FetchConnectionRequest>().mockResolvedValue(jsonResponse({}, 503));
+    const failedDisconnect = vi.fn<FetchConnectionRequest>().mockResolvedValue(jsonResponse({}, 500));
+
+    await expect(startConnection("google", failedStart)).rejects.toThrow("request_failed");
+    await expect(
+      disconnectConnection("11111111-1111-4111-8111-111111111111", failedDisconnect),
+    ).rejects.toThrow("request_failed");
+  });
 });
