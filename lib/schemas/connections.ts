@@ -19,7 +19,9 @@ export const ConnectionsResponseSchema = z.object({
 });
 
 export const StartConnectionResponseSchema = z.object({
-  url: z.string().url(),
+  url: z.string().url().refine((value) => ["http:", "https:"].includes(new URL(value).protocol), {
+    message: "Connection URL must use HTTP or HTTPS.",
+  }),
 });
 
 export type ConnectionStatus = z.infer<typeof ConnectionStatusSchema>;

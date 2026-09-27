@@ -1,45 +1,39 @@
 "use client";
 
-import { useCallback, useEffect, useReducer } from "react";
+import { useCallback, useEffect, useReducer, useRef } from "react";
 import { ConnectionCard } from "@/components/ConnectionCard";
+import { disconnectConnection, loadConnections, startConnection } from "@/lib/connections-client";
 import type { OAuthNotice } from "@/lib/connections-page";
 import { connectionsPageReducer, initialConnectionsPageState } from "@/lib/connections-page";
-import { ConnectionsResponseSchema, StartConnectionResponseSchema } from "@/lib/schemas/connections";
 import { PROVIDERS, type Provider } from "@/lib/types";
 
 const LOAD_ERROR = "We could not load your connections. Check your connection and try again.";
 
 export function ConnectionsScreen({ notice }: { notice: OAuthNotice | null }) {
   const [state, dispatch] = useReducer(connectionsPageReducer, initialConnectionsPageState);
+  const providersInFlight = useRef(new Set<Provider>());
 
-  const loadConnections = useCallback(async () => {
+  const refreshConnections = useCallback(async () => {
     dispatch({ type: "load_started" });
     try {
-      const response = await fetch("/api/connections", { headers: { accept: "application/json" } });
-      if (!response.ok) throw new Error("request_failed");
-
-      const parsed = ConnectionsResponseSchema.safeParse(await response.json());
-      if (!parsed.success) throw new Error("invalid_response");
-      dispatch({ type: "load_succeeded", connections: parsed.data.connections });
+      dispatch({ type: "load_succeeded", connections: await loadConnections() });
     } catch {
       dispatch({ type: "load_failed", message: LOAD_ERROR });
     }
   }, []);
 
   useEffect(() => {
-    void loadConnections();
-  }, [loadConnections]);
+    void refreshConnections();
+  }, [refreshConnections]);
 
   async function connect(provider: Provider) {
+    if (providersInFlight.current.has(provider)) return;
+    providersInFlight.current.add(provider);
     dispatch({ type: "action_started", provider, action: "connect" });
     try {
-      const response = await fetch(`/api/connections/${provider}/start`, { method: "POST" });
-      if (!response.ok) throw new Error("request_failed");
-
-      const parsed = StartConnectionResponseSchema.safeParse(await response.json());
-      if (!parsed.success) throw new Error("invalid_response");
-      window.location.assign(parsed.data.url);
+      window.location.assign(await startConnection(provider));
     } catch {
+      providersInFlight.current.delete(provider);
       dispatch({
         type: "action_failed",
         provider,
@@ -51,13 +45,16 @@ export function ConnectionsScreen({ notice }: { notice: OAuthNotice | null }) {
   async function disconnect(provider: Provider, connectionId: string) {
     const providerName = provider === "google" ? "Google" : "Slack";
     if (!window.confirm(`Disconnect ${providerName}? Workflows using it will stop until you reconnect.`)) return;
+    if (providersInFlight.current.has(provider)) return;
 
+    providersInFlight.current.add(provider);
     dispatch({ type: "action_started", provider, action: "disconnect" });
     try {
-      const response = await fetch(`/api/connections/${connectionId}`, { method: "DELETE" });
-      if (!response.ok) throw new Error("request_failed");
+      await disconnectConnection(connectionId);
+      providersInFlight.current.delete(provider);
       dispatch({ type: "disconnect_succeeded", provider });
     } catch {
+      providersInFlight.current.delete(provider);
       dispatch({ type: "action_failed", provider, message: `${providerName} could not be disconnected. Try again.` });
     }
   }
@@ -100,7 +97,7 @@ export function ConnectionsScreen({ notice }: { notice: OAuthNotice | null }) {
           <button
             type="button"
             className="mt-3 rounded border border-neutral-300 px-3 py-1.5 text-sm font-medium"
-            onClick={() => void loadConnections()}
+            onClick={() => void refreshConnections()}
           >
             Try again
           </button>
