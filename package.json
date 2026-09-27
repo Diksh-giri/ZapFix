@@ -19,6 +19,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:check": "tsx scripts/db-check.ts",
+    "db:workflow-smoke": "tsx scripts/workflow-store-smoke.ts",
     "check": "npm run typecheck && npm run lint && npm run test"
   },
   "dependencies": {

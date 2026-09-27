@@ -17,6 +17,8 @@ export const PatchWorkflowRequest = z.object({
   name: z.string().min(1).max(120).optional(),
   actionConfig: ActionConfigSchema.optional(),
   expectedConfigVersion: z.number().int().positive(),
+}).refine((body) => body.name !== undefined || body.actionConfig !== undefined, {
+  message: "Provide a name or action configuration to update.",
 });
 
 export const RunWorkflowRequest = z.object({ triggerData: TriggerDataSchema });

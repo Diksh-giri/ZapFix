@@ -1,5 +1,14 @@
 import { z } from "zod";
 
+export function isValidTimeZone(value: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * A workflow = one built-in trigger + one action (Decisions #004, #002).
  * The action config maps each action field to a trigger field, a fixed value,
@@ -11,7 +20,7 @@ export const TransformSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("date_to_rfc3339"),
     fromFormat: z.enum(["MM/DD/YYYY", "DD/MM/YYYY", "YYYY-MM-DD"]),
-    timeZone: z.string().default("UTC"),
+    timeZone: z.string().default("UTC").refine(isValidTimeZone, "Use a valid IANA time zone."),
   }),
   z.object({ kind: z.literal("trim") }),
   z.object({ kind: z.literal("lowercase") }),

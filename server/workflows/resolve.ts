@@ -26,14 +26,35 @@ export function resolveMapping(mapping: FieldMapping, trigger: TriggerData): str
     case "lowercase":
       return raw.toLowerCase();
     case "date_to_rfc3339":
-      // TODO(T10): honor t.timeZone. For now: midnight UTC of the given date.
-      return dateToRfc3339(raw, t.fromFormat) ?? raw;
+      return dateToRfc3339(raw, t.fromFormat, t.timeZone) ?? raw;
   }
+}
+
+function utcMillis(year: number, month: number, day: number): number {
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  date.setUTCHours(0, 0, 0, 0);
+  return date.getTime();
+}
+
+function localParts(formatter: Intl.DateTimeFormat, instant: number) {
+  const parts = Object.fromEntries(
+    formatter.formatToParts(new Date(instant)).map((part) => [part.type, part.value]),
+  );
+  return {
+    year: Number(parts.year),
+    month: Number(parts.month),
+    day: Number(parts.day),
+    hour: Number(parts.hour),
+    minute: Number(parts.minute),
+    second: Number(parts.second),
+  };
 }
 
 export function dateToRfc3339(
   raw: string,
   from: "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD",
+  timeZone = "UTC",
 ): string | null {
   const s = raw.trim();
   let y: string;
@@ -52,8 +73,56 @@ export function dateToRfc3339(
     m = from === "MM/DD/YYYY" ? match[1]! : match[2]!;
     d = from === "MM/DD/YYYY" ? match[2]! : match[1]!;
   }
+  const year = Number(y);
   const month = Number(m);
   const day = Number(d);
-  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-  return `${y}-${m}-${d}T00:00:00Z`;
+  if (year < 1 || month < 1 || month > 12 || day < 1 || day > 31) return null;
+
+  const calendarCheck = new Date(utcMillis(year, month, day));
+  if (
+    calendarCheck.getUTCFullYear() !== year ||
+    calendarCheck.getUTCMonth() !== month - 1 ||
+    calendarCheck.getUTCDate() !== day
+  ) return null;
+
+  let formatter: Intl.DateTimeFormat;
+  try {
+    formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23",
+    });
+  } catch {
+    return null;
+  }
+
+  const desiredLocalAsUtc = utcMillis(year, month, day);
+  let instant = desiredLocalAsUtc;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const represented = localParts(formatter, instant);
+    const representedLocalAsUtc = utcMillis(represented.year, represented.month, represented.day)
+      + represented.hour * 3_600_000
+      + represented.minute * 60_000
+      + represented.second * 1_000;
+    const adjustment = desiredLocalAsUtc - representedLocalAsUtc;
+    instant += adjustment;
+    if (adjustment === 0) break;
+  }
+
+  const resolved = localParts(formatter, instant);
+  if (
+    resolved.year !== year ||
+    resolved.month !== month ||
+    resolved.day !== day ||
+    resolved.hour !== 0 ||
+    resolved.minute !== 0 ||
+    resolved.second !== 0
+  ) return null;
+
+  return new Date(instant).toISOString().replace(".000Z", "Z");
 }
