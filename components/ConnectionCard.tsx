@@ -10,6 +10,7 @@ export interface ConnectionCardProps {
   provider: Provider;
   connection: ClientConnection | null;
   busyAction: BusyAction;
+  disabled?: boolean;
   error?: string | null;
   onConnect: () => void;
   onDisconnect: () => void;
@@ -47,13 +48,14 @@ export function ConnectionCard({
   provider,
   connection,
   busyAction,
+  disabled = false,
   error,
   onConnect,
   onDisconnect,
 }: ConnectionCardProps) {
   const providerName = PROVIDER_NAMES[provider];
   const displayState = getConnectionDisplayState(connection);
-  const isBusy = busyAction !== null;
+  const isBusy = disabled || busyAction !== null;
   const shouldReconnect = displayState === "reconnect_soon" || displayState === "reconnect_required";
 
   const statusText: Record<DisplayState, string> = {

@@ -83,4 +83,20 @@ describe("ConnectionCard", () => {
     expect(html).toContain("disabled");
     expect(html).toContain('role="alert"');
   });
+
+  it("disables connect while the parent page is loading", () => {
+    const html = renderToStaticMarkup(
+      createElement(ConnectionCard, {
+        provider: "slack",
+        connection: null,
+        busyAction: null,
+        disabled: true,
+        ...actions,
+      }),
+    );
+
+    expect(html).toContain("Connect Slack");
+    expect(html).toContain("disabled");
+    expect(html).not.toContain("Opening connection...");
+  });
 });

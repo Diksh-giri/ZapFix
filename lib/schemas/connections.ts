@@ -18,6 +18,10 @@ export const ConnectionsResponseSchema = z.object({
   connections: z.array(ClientConnectionSchema),
 });
 
+export const StartConnectionResponseSchema = z.object({
+  url: z.string().url(),
+});
+
 export type ConnectionStatus = z.infer<typeof ConnectionStatusSchema>;
 export type ClientConnection = z.infer<typeof ClientConnectionSchema>;
 export type ConnectionsResponse = z.infer<typeof ConnectionsResponseSchema>;
