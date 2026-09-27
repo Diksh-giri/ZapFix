@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import type { ClientConnection } from "@/lib/schemas/connections";
 import type { Provider } from "@/lib/types";
 
@@ -59,6 +60,10 @@ export function ConnectionCard({
   const displayState = getConnectionDisplayState(connection);
   const isBusy = disabled || busyAction !== null;
   const shouldReconnect = displayState === "reconnect_soon" || displayState === "reconnect_required";
+  const googleDaysRemaining =
+    provider === "google" && connection?.reconnectBy && displayState !== "reconnect_required"
+      ? Math.max(0, 7 - connection.ageDays)
+      : null;
 
   const statusText: Record<DisplayState, string> = {
     disconnected: "Disconnected",
@@ -103,6 +108,11 @@ export function ConnectionCard({
       {provider === "google" ? (
         <div className="mt-4 space-y-1 text-sm text-neutral-600">
           <p>Google test connections usually last about seven days.</p>
+          {googleDaysRemaining !== null ? (
+            <p>
+              About {googleDaysRemaining} {googleDaysRemaining === 1 ? "day" : "days"} remaining.
+            </p>
+          ) : null}
           {displayState === "reconnect_soon" ? <p>Reconnect Google soon to avoid interrupting workflows.</p> : null}
           {displayState === "reconnect_required" ? <p>Reconnect Google before running workflows.</p> : null}
         </div>
@@ -115,7 +125,7 @@ export function ConnectionCard({
       ) : null}
 
       <p className="mt-2 text-sm text-neutral-600">
-        Actions run on your real accounts. Use test accounts and test data.
+        Actions run on your real accounts. Use a test calendar, channel and sheet.
       </p>
 
       {error ? (
@@ -126,9 +136,8 @@ export function ConnectionCard({
 
       <div className="mt-5 flex flex-wrap gap-3">
         {!connection || shouldReconnect ? (
-          <button
+          <Button
             type="button"
-            className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
             disabled={isBusy}
             onClick={onConnect}
           >
@@ -137,18 +146,18 @@ export function ConnectionCard({
               : connection
                 ? `Reconnect ${providerName}`
                 : `Connect ${providerName}`}
-          </button>
+          </Button>
         ) : null}
 
         {connection ? (
-          <button
+          <Button
             type="button"
-            className="rounded border border-neutral-300 px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
+            variant="outline"
             disabled={isBusy}
             onClick={onDisconnect}
           >
             {busyAction === "disconnect" ? "Disconnecting..." : "Disconnect"}
-          </button>
+          </Button>
         ) : null}
       </div>
     </article>

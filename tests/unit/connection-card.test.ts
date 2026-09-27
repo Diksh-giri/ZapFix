@@ -72,7 +72,8 @@ describe("ConnectionCard", () => {
     expect(html).toContain("tester@example.com");
     expect(html).toContain("Sep 26, 2026");
     expect(html).toContain("Google test connections usually last about seven days.");
-    expect(html).toContain("Actions run on your real accounts. Use test accounts and test data.");
+    expect(html).toContain("About 6 days remaining.");
+    expect(html).toContain("Actions run on your real accounts. Use a test calendar, channel and sheet.");
     expect(html).toContain("Disconnect");
   });
 

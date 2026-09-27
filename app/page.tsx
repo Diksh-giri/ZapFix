@@ -8,7 +8,7 @@ export default function Home() {
       <p>Scaffold is running. Screens are placeholders until their tasks are built.</p>
       <ul className="list-disc pl-6">
         <li><Link className="underline" href="/sign-in">Sign in (T3)</Link></li>
-        <li><Link className="underline" href="/connections">Connections (T16)</Link></li>
+        <li><Link className="underline" href="/connections">Connections</Link></li>
         <li><Link className="underline" href="/workflows">Workflows (T17)</Link></li>
       </ul>
     </div>

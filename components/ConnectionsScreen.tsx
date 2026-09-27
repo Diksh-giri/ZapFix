@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useReducer, useRef } from "react";
 import { ConnectionCard } from "@/components/ConnectionCard";
+import { Button } from "@/components/ui/button";
 import { disconnectConnection, loadConnections, startConnection } from "@/lib/connections-client";
 import type { OAuthNotice } from "@/lib/connections-page";
 import { connectionsPageReducer, getConnectionsSummary, initialConnectionsPageState } from "@/lib/connections-page";
@@ -92,13 +93,14 @@ export function ConnectionsScreen({
       {state.loadStatus === "error" ? (
         <div className="rounded border border-red-200 p-4" role="alert">
           <p className="text-sm text-red-800">{state.loadError}</p>
-          <button
+          <Button
             type="button"
-            className="mt-3 rounded border border-neutral-300 px-3 py-1.5 text-sm font-medium"
+            variant="outline"
+            className="mt-3"
             onClick={() => void refreshConnections()}
           >
             Try again
-          </button>
+          </Button>
         </div>
       ) : null}
 
