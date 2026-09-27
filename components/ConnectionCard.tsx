@@ -11,6 +11,7 @@ export interface ConnectionCardProps {
   connection: ClientConnection | null;
   busyAction: BusyAction;
   disabled?: boolean;
+  showSlackHttpsWarning?: boolean;
   error?: string | null;
   onConnect: () => void;
   onDisconnect: () => void;
@@ -49,6 +50,7 @@ export function ConnectionCard({
   connection,
   busyAction,
   disabled = false,
+  showSlackHttpsWarning = false,
   error,
   onConnect,
   onDisconnect,
@@ -99,13 +101,21 @@ export function ConnectionCard({
       )}
 
       {provider === "google" ? (
-        <p className="mt-4 text-sm text-neutral-600">
-          Google test connections usually last about seven days.
+        <div className="mt-4 space-y-1 text-sm text-neutral-600">
+          <p>Google test connections usually last about seven days.</p>
+          {displayState === "reconnect_soon" ? <p>Reconnect Google soon to avoid interrupting workflows.</p> : null}
+          {displayState === "reconnect_required" ? <p>Reconnect Google before running workflows.</p> : null}
+        </div>
+      ) : null}
+
+      {provider === "slack" && showSlackHttpsWarning ? (
+        <p className="mt-4 text-sm font-medium text-amber-800" role="note">
+          Slack connections require HTTPS outside local development. Open the secure version of this site to connect.
         </p>
       ) : null}
 
       <p className="mt-2 text-sm text-neutral-600">
-        Actions use your real account. Use test accounts and test data while developing.
+        Actions run on your real accounts. Use test accounts and test data.
       </p>
 
       {error ? (

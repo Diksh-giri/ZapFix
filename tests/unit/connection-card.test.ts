@@ -64,6 +64,7 @@ describe("ConnectionCard", () => {
     expect(html).toContain("tester@example.com");
     expect(html).toContain("Sep 26, 2026");
     expect(html).toContain("Google test connections usually last about seven days.");
+    expect(html).toContain("Actions run on your real accounts. Use test accounts and test data.");
     expect(html).toContain("Disconnect");
   });
 
@@ -98,5 +99,42 @@ describe("ConnectionCard", () => {
     expect(html).toContain("Connect Slack");
     expect(html).toContain("disabled");
     expect(html).not.toContain("Opening connection...");
+  });
+
+  it("shows the Slack HTTPS warning only when the page says it is actionable", () => {
+    const localHtml = renderToStaticMarkup(
+      createElement(ConnectionCard, {
+        provider: "slack",
+        connection: null,
+        busyAction: null,
+        ...actions,
+      }),
+    );
+    const insecureDeploymentHtml = renderToStaticMarkup(
+      createElement(ConnectionCard, {
+        provider: "slack",
+        connection: null,
+        busyAction: null,
+        showSlackHttpsWarning: true,
+        ...actions,
+      }),
+    );
+
+    expect(localHtml).not.toContain("Slack connections require HTTPS");
+    expect(insecureDeploymentHtml).toContain("Slack connections require HTTPS outside local development.");
+  });
+
+  it("never renders internal scopes or provider error codes", () => {
+    const html = renderToStaticMarkup(
+      createElement(ConnectionCard, {
+        provider: "google",
+        connection: { ...googleConnection, lastErrorCode: "secret_provider_error" },
+        busyAction: null,
+        ...actions,
+      }),
+    );
+
+    expect(html).not.toContain("calendar.events.owned");
+    expect(html).not.toContain("secret_provider_error");
   });
 });

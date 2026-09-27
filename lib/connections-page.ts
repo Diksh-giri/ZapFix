@@ -87,3 +87,8 @@ export function getOAuthNotice(params: { connected?: string; error?: string }): 
       return null;
   }
 }
+
+export function shouldShowSlackHttpsWarning(location: { protocol: string; hostname: string }): boolean {
+  const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+  return location.protocol !== "https:" && !isLocal;
+}

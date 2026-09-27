@@ -9,7 +9,13 @@ import { PROVIDERS, type Provider } from "@/lib/types";
 
 const LOAD_ERROR = "We could not load your connections. Check your connection and try again.";
 
-export function ConnectionsScreen({ notice }: { notice: OAuthNotice | null }) {
+export function ConnectionsScreen({
+  notice,
+  showSlackHttpsWarning,
+}: {
+  notice: OAuthNotice | null;
+  showSlackHttpsWarning: boolean;
+}) {
   const [state, dispatch] = useReducer(connectionsPageReducer, initialConnectionsPageState);
   const providersInFlight = useRef(new Set<Provider>());
 
@@ -116,6 +122,7 @@ export function ConnectionsScreen({ notice }: { notice: OAuthNotice | null }) {
               connection={connection}
               busyAction={state.busyByProvider[provider] ?? null}
               disabled={state.loadStatus !== "ready"}
+              showSlackHttpsWarning={provider === "slack" && showSlackHttpsWarning}
               error={state.errorByProvider[provider] ?? null}
               onConnect={() => void connect(provider)}
               onDisconnect={() => {

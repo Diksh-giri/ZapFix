@@ -6,6 +6,7 @@ import {
   connectionsPageReducer,
   getOAuthNotice,
   initialConnectionsPageState,
+  shouldShowSlackHttpsWarning,
 } from "@/lib/connections-page";
 import type { ClientConnection } from "@/lib/schemas/connections";
 
@@ -103,11 +104,25 @@ describe("getOAuthNotice", () => {
 
 describe("ConnectionsScreen", () => {
   it("renders the initial loading state and both provider cards", () => {
-    const html = renderToStaticMarkup(createElement(ConnectionsScreen, { notice: null }));
+    const html = renderToStaticMarkup(
+      createElement(ConnectionsScreen, { notice: null, showSlackHttpsWarning: false }),
+    );
 
     expect(html).toContain("Loading your connections...");
     expect(html).toContain("Google");
     expect(html).toContain("Slack");
     expect(html.match(/disabled/g)?.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("shouldShowSlackHttpsWarning", () => {
+  it("stays quiet on local HTTP and every HTTPS deployment", () => {
+    expect(shouldShowSlackHttpsWarning({ protocol: "http:", hostname: "localhost" })).toBe(false);
+    expect(shouldShowSlackHttpsWarning({ protocol: "http:", hostname: "127.0.0.1" })).toBe(false);
+    expect(shouldShowSlackHttpsWarning({ protocol: "https:", hostname: "zapfix.example" })).toBe(false);
+  });
+
+  it("warns on an insecure non-local deployment", () => {
+    expect(shouldShowSlackHttpsWarning({ protocol: "http:", hostname: "zapfix.example" })).toBe(true);
   });
 });
