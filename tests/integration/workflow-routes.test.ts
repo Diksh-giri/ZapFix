@@ -103,6 +103,35 @@ describe("workflow create and read routes", () => {
     expect(mocks.service.create).not.toHaveBeenCalled();
   });
 
+  it("maps an unknown trigger mapping rejected by the service to HTTP 422", async () => {
+    const body = {
+      name: "Broken mapping",
+      app: "google_calendar",
+      actionKey: "create_event",
+      connectionId: CONNECTION,
+      triggerSchema: { fields: [{ key: "title", label: "Title", type: "text" }] },
+      actionConfig: {
+        title: { kind: "mapped", source: "missing_title" },
+        start: { kind: "static", value: "2026-03-15T10:00:00Z" },
+        end: { kind: "static", value: "2026-03-15T11:00:00Z" },
+        attendee_email: { kind: "static", value: "a@example.com" },
+      },
+    };
+    mocks.service.create.mockRejectedValue(new AppError(
+      "validation_failed",
+      "The workflow configuration is not valid.",
+      { problems: ['"title" maps from unknown trigger field "missing_title"'] },
+    ));
+
+    const response = await createWorkflow(
+      request("http://test/api/workflows", "POST", body),
+      params(),
+    );
+
+    expect(response.status).toBe(422);
+    expect((await response.json()).error.code).toBe("validation_failed");
+  });
+
   it("opens a workflow using the signed-in user and validated path id", async () => {
     mocks.service.get.mockResolvedValue({ id: WORKFLOW, name: "Demo" });
 

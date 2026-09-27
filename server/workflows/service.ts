@@ -53,8 +53,20 @@ export interface UpdateWorkflowInput {
   expectedConfigVersion: number;
 }
 
-function validateConfig(adapter: AppAdapter, actionKey: string, actionConfig: ActionConfig): void {
-  const problems = adapter.validateConfig(actionKey, actionConfig);
+function validateConfig(
+  adapter: AppAdapter,
+  actionKey: string,
+  triggerSchema: TriggerSchema,
+  actionConfig: ActionConfig,
+): void {
+  const triggerKeys = new Set(triggerSchema.fields.map((field) => field.key));
+  const problems = [
+    ...adapter.validateConfig(actionKey, actionConfig),
+    ...Object.entries(actionConfig).flatMap(([field, mapping]) =>
+      mapping.kind === "mapped" && !triggerKeys.has(mapping.source)
+        ? [`"${field}" maps from unknown trigger field "${mapping.source}"`]
+        : []),
+  ];
   if (problems.length > 0) {
     throw new AppError("validation_failed", "The workflow configuration is not valid.", { problems });
   }
@@ -68,7 +80,7 @@ export function createWorkflowService(deps: WorkflowServiceDeps) {
 
     async create(userId: string, input: CreateWorkflowInput): Promise<WorkflowRecord> {
       const adapter = deps.getAdapter(input.app);
-      validateConfig(adapter, input.actionKey, input.actionConfig);
+      validateConfig(adapter, input.actionKey, input.triggerSchema, input.actionConfig);
 
       const connection = await deps.store.getConnection(input.connectionId, userId);
       if (!connection || connection.provider !== adapter.provider) {
@@ -93,7 +105,12 @@ export function createWorkflowService(deps: WorkflowServiceDeps) {
       if (!current) throw new AppError("not_found", "Workflow not found.");
 
       if (input.actionConfig !== undefined) {
-        validateConfig(deps.getAdapter(current.app), current.actionKey, input.actionConfig);
+        validateConfig(
+          deps.getAdapter(current.app),
+          current.actionKey,
+          current.triggerSchema,
+          input.actionConfig,
+        );
       }
 
       const updated = await deps.store.update({ id, userId, ...input });

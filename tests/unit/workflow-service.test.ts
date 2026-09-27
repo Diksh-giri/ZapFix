@@ -138,6 +138,26 @@ describe("workflow service create and read", () => {
     })).rejects.toMatchObject({ code: "validation_failed", status: 422 });
   });
 
+  it("refuses a mapping whose source is not in the trigger schema", async () => {
+    await expect(service().create(USER, {
+      name: "Invalid source",
+      app: "google_calendar",
+      actionKey: "create_event",
+      connectionId: "conn-google",
+      triggerSchema,
+      actionConfig: {
+        ...validConfig,
+        title: { kind: "mapped", source: "missing_title" },
+      },
+    })).rejects.toMatchObject({
+      code: "validation_failed",
+      status: 422,
+      details: { problems: ['"title" maps from unknown trigger field "missing_title"'] },
+    });
+
+    expect(rows).toHaveLength(0);
+  });
+
   it("lists and opens only the caller's workflows", async () => {
     const workflowService = service();
     await workflowService.create(USER, {
@@ -206,6 +226,37 @@ describe("workflow service update", () => {
 
     expect(created.actionConfig).toEqual(validConfig);
     expect(expiredFor).toEqual([]);
+  });
+
+  it("rejects an update mapped from an unknown trigger field without changing state", async () => {
+    const created = await createWorkflow();
+
+    await expect(service().update(created.id, USER, {
+      actionConfig: {
+        ...validConfig,
+        title: { kind: "mapped", source: "missing_title" },
+      },
+      expectedConfigVersion: 1,
+    })).rejects.toMatchObject({ code: "validation_failed", status: 422 });
+
+    expect(created).toMatchObject({ configVersion: 1, actionConfig: validConfig });
+    expect(expiredFor).toEqual([]);
+  });
+
+  it("still accepts an update mapped from a defined trigger field", async () => {
+    const created = await createWorkflow();
+    const actionConfig: ActionConfig = {
+      ...validConfig,
+      attendee_email: { kind: "mapped", source: "title" },
+    };
+
+    const updated = await service().update(created.id, USER, {
+      actionConfig,
+      expectedConfigVersion: 1,
+    });
+
+    expect(updated).toMatchObject({ configVersion: 2, actionConfig });
+    expect(expiredFor).toEqual([created.id]);
   });
 
   it("does not reveal or update another user's workflow", async () => {
