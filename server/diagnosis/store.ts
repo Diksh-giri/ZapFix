@@ -15,6 +15,7 @@ export interface DiagnosisContext {
   };
   attempt: {
     id: string;
+    stepKey: string;
     status: AttemptStatus;
     configSnapshot: ActionConfig;
     error: StandardError | null;

@@ -54,6 +54,7 @@ function asContext(row: {
     },
     attempt: {
       id: row.attempt.id,
+      stepKey: row.attempt.stepKey,
       status: row.attempt.status as AttemptStatus,
       configSnapshot: configSnapshot.data,
       error: error?.data ?? null,
