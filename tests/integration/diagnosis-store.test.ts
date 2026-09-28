@@ -2,6 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { runs, stepAttempts, workflows } from "@/db/schema";
 import type { ActionConfig } from "@/lib/schemas/workflow-config";
 import { createDrizzleDiagnosisStore } from "@/server/diagnosis/drizzle-store";
+import { createDrizzleRunStore } from "@/server/runs/drizzle-store";
 import { OTHER_USER, USER, db, resetUsers, scratchEnabled, sql } from "./_support/scratch-db";
 
 const WORKFLOW = "10000000-0000-4000-8000-000000000031";
@@ -171,6 +172,7 @@ describe.skipIf(!scratchEnabled)("diagnosis persistence on a real database (scra
 
     await expect(store.get(saved.id, USER)).resolves.toEqual(saved);
     await expect(store.get(saved.id, OTHER_USER)).resolves.toBeUndefined();
+    await expect(createDrizzleRunStore(db!).latestDiagnosisId(RUN)).resolves.toBe(saved.id);
   });
 
   it("refuses to save a diagnosis for another user's attempt", async () => {

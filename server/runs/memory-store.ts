@@ -8,6 +8,7 @@ export interface MemoryRunStore extends RunStore {
   setConnectionStatus(workflowId: string, status: string): void;
   updateWorkflowConfig(workflowId: string, config: ActionConfig): void;
   markChangeApplied(runId: string, at: Date): void;
+  setLatestDiagnosis(runId: string, diagnosisId: string): void;
   attempts(runId: string): AttemptRecord[];
   allAttempts(): AttemptRecord[];
   getRunSync(id: string): RunRecord | undefined;
@@ -19,6 +20,7 @@ export function createMemoryRunStore(): MemoryRunStore {
   const runs = new Map<string, RunRecord>();
   const attempts: AttemptRecord[] = [];
   const changes = new Map<string, Date>();
+  const latestDiagnoses = new Map<string, string>();
   let seq = 0;
 
   const forRun = (runId: string) =>
@@ -38,6 +40,9 @@ export function createMemoryRunStore(): MemoryRunStore {
     },
     markChangeApplied(runId, at) {
       changes.set(runId, at);
+    },
+    setLatestDiagnosis(runId, diagnosisId) {
+      latestDiagnoses.set(runId, diagnosisId);
     },
     attempts: (runId) => forRun(runId).map((a) => ({ ...a })),
     allAttempts: () => attempts.map((a) => ({ ...a })),
@@ -82,6 +87,9 @@ export function createMemoryRunStore(): MemoryRunStore {
     async updateAttempt(id, patch) {
       const a = attempts.find((x) => x.id === id);
       if (a) Object.assign(a, patch);
+    },
+    async latestDiagnosisId(runId) {
+      return latestDiagnoses.get(runId);
     },
     async lastChangeAppliedAt(runId) {
       return changes.get(runId);

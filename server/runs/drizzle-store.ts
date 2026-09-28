@@ -1,4 +1,4 @@
-import { and, asc, eq, max } from "drizzle-orm";
+import { and, asc, desc, eq, max } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { approvals, configChanges, connections, diagnoses, proposals, runs, stepAttempts, workflows } from "@/db/schema";
 import type * as schema from "@/db/schema";
@@ -140,6 +140,17 @@ export function createDrizzleRunStore(db: Database): RunStore {
       if ("externalRef" in patch) set.externalRef = patch.externalRef ?? null;
       if ("finishedAt" in patch) set.finishedAt = patch.finishedAt ?? null;
       if (Object.keys(set).length > 0) await db.update(stepAttempts).set(set).where(eq(stepAttempts.id, id));
+    },
+
+    async latestDiagnosisId(runId) {
+      const [row] = await db
+        .select({ id: diagnoses.id })
+        .from(diagnoses)
+        .innerJoin(stepAttempts, eq(stepAttempts.id, diagnoses.attemptId))
+        .where(eq(stepAttempts.runId, runId))
+        .orderBy(desc(diagnoses.createdAt))
+        .limit(1);
+      return row?.id;
     },
 
     async lastChangeAppliedAt(runId) {
