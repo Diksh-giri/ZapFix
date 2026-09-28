@@ -1,10 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useReducer } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { StepStatusList } from "@/components/StepStatusList";
-import { initialRunDetailState, runDetailReducer, shouldPollRun } from "@/lib/run-detail";
-import { loadRun } from "@/lib/runs-client";
+import {
+  createExclusiveActionRunner,
+  initialRunDetailState,
+  runActionErrorMessage,
+  runDetailReducer,
+  shouldPollRun,
+} from "@/lib/run-detail";
+import { loadRun, recordFailureOpened, requestDiagnosis, retryRun, RunRequestError } from "@/lib/runs-client";
 import type { RunView } from "@/lib/schemas/runs";
 
 const POLL_INTERVAL_MS = 1_500;
@@ -107,8 +113,74 @@ export function RunEvidence({ view }: { view: RunView }) {
   );
 }
 
+interface RunActionsProps {
+  view: RunView;
+  busy: "diagnose" | "retry" | null;
+  diagnosisId: string | null;
+  confirmUncertain: boolean;
+  error: string | null;
+  onConfirmUncertain: (confirmed: boolean) => void;
+  onDiagnose: () => void;
+  onRetry: () => void;
+}
+
+export function RunActions({
+  view,
+  busy,
+  diagnosisId,
+  confirmUncertain,
+  error,
+  onConfirmUncertain,
+  onDiagnose,
+  onRetry,
+}: RunActionsProps) {
+  const latestStatus = view.attempts.at(-1)?.status ?? view.run.status;
+  const canAct = latestStatus === "failed" || latestStatus === "uncertain";
+  if (!canAct) return null;
+
+  return (
+    <section className="space-y-3" aria-labelledby="run-actions-heading">
+      <h3 id="run-actions-heading" className="font-semibold">Next actions</h3>
+      {latestStatus === "uncertain" ? (
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={confirmUncertain}
+            disabled={busy !== null}
+            onChange={(event) => onConfirmUncertain(event.target.checked)}
+          />
+          <span>I checked the connected app and want to retry even though the action may already have occurred.</span>
+        </label>
+      ) : null}
+      <div className="flex flex-wrap gap-3">
+        {diagnosisId ? (
+          <p className="text-sm font-medium" role="status">Diagnosis ready.</p>
+        ) : (
+          <Button disabled={busy !== null} onClick={onDiagnose}>
+            {busy === "diagnose" ? "Diagnosing..." : "Diagnose"}
+          </Button>
+        )}
+        <Button
+          variant="outline"
+          disabled={busy !== null || (latestStatus === "uncertain" && !confirmUncertain)}
+          onClick={onRetry}
+        >
+          {busy === "retry" ? "Retrying..." : "Retry"}
+        </Button>
+      </div>
+      {error ? <p className="text-sm text-red-700" role="alert">{error}</p> : null}
+    </section>
+  );
+}
+
 export function RunDetail({ runId }: { runId: string }) {
   const [state, dispatch] = useReducer(runDetailReducer, initialRunDetailState);
+  const [busy, setBusy] = useState<"diagnose" | "retry" | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [diagnosisId, setDiagnosisId] = useState<string | null>(null);
+  const [confirmUncertain, setConfirmUncertain] = useState(false);
+  const openedRuns = useRef(new Set<string>());
+  const actionRunner = useRef(createExclusiveActionRunner());
 
   const refresh = useCallback(async () => {
     dispatch({ type: "load_started" });
@@ -133,6 +205,50 @@ export function RunDetail({ runId }: { runId: string }) {
     return () => window.clearTimeout(timer);
   }, [refresh, state]);
 
+  useEffect(() => {
+    const view = state.view;
+    if (!view) return;
+    if ((view.run.status === "failed" || view.run.status === "uncertain") && !openedRuns.current.has(view.run.id)) {
+      openedRuns.current.add(view.run.id);
+      void recordFailureOpened(view.run.id).catch(() => {});
+    }
+  }, [state.view]);
+
+  const explainActionError = (caught: unknown, fallback: string) => {
+    const code = caught instanceof RunRequestError ? caught.code : "request_failed";
+    const message = caught instanceof Error ? caught.message : fallback;
+    return runActionErrorMessage(code, message);
+  };
+
+  const diagnose = () => actionRunner.current(async () => {
+    setBusy("diagnose"); setActionError(null);
+    try {
+      setDiagnosisId(await requestDiagnosis(runId));
+    } catch (caught) {
+      setActionError(explainActionError(caught, "The diagnosis could not be started."));
+    } finally {
+      setBusy(null);
+    }
+  });
+
+  const retry = () => actionRunner.current(async () => {
+    const latestStatus = state.view?.attempts.at(-1)?.status ?? state.view?.run.status;
+    if (latestStatus === "uncertain" && !confirmUncertain) {
+      setActionError("Check the connected app and confirm before retrying this uncertain action.");
+      return;
+    }
+    setBusy("retry"); setActionError(null);
+    try {
+      const view = await retryRun(runId, latestStatus === "uncertain" && confirmUncertain);
+      dispatch({ type: "load_succeeded", view });
+      setConfirmUncertain(false);
+    } catch (caught) {
+      setActionError(explainActionError(caught, "The action could not be retried."));
+    } finally {
+      setBusy(null);
+    }
+  });
+
   if (state.status === "idle" || (state.status === "loading" && !state.view)) {
     return <p role="status">Loading run...</p>;
   }
@@ -153,6 +269,16 @@ export function RunDetail({ runId }: { runId: string }) {
     <section className="space-y-2 border-t pt-6" aria-labelledby="run-detail-heading">
       <h2 id="run-detail-heading" className="text-lg font-semibold">Latest test run</h2>
       <RunEvidence view={view} />
+      <RunActions
+        view={view}
+        busy={busy}
+        diagnosisId={diagnosisId ?? view.latestDiagnosisId}
+        confirmUncertain={confirmUncertain}
+        error={actionError}
+        onConfirmUncertain={setConfirmUncertain}
+        onDiagnose={() => void diagnose()}
+        onRetry={() => void retry()}
+      />
       {state.status === "loading" ? <p className="text-sm" role="status">Checking run status...</p> : null}
       {state.status === "error" ? (
         <div className="flex items-center gap-3" role="alert">

@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { RunEvidence } from "@/components/RunDetail";
-import { initialRunDetailState, runDetailReducer, shouldPollRun } from "@/lib/run-detail";
-import { loadRun, RunRequestError } from "@/lib/runs-client";
+import { RunActions, RunEvidence } from "@/components/RunDetail";
+import {
+  createExclusiveActionRunner,
+  initialRunDetailState,
+  runActionErrorMessage,
+  runDetailReducer,
+  shouldPollRun,
+} from "@/lib/run-detail";
+import { loadRun, recordFailureOpened, requestDiagnosis, retryRun, RunRequestError } from "@/lib/runs-client";
 import type { RunView } from "@/lib/schemas/runs";
 
 const view = (status: RunView["run"]["status"]): RunView => ({
@@ -48,6 +54,25 @@ describe("runDetailReducer", () => {
       { type: "load_succeeded", view: view("succeeded") },
     );
     expect(shouldPollRun(ready)).toBe(false);
+  });
+});
+
+describe("run action guards", () => {
+  it("runs only one action while a request is active", async () => {
+    const runner = createExclusiveActionRunner();
+    let release = () => {};
+    const first = runner(() => new Promise<void>((resolve) => { release = resolve; }));
+    const second = runner(async () => {});
+    await expect(second).resolves.toBe(false);
+    release();
+    await expect(first).resolves.toBe(true);
+  });
+
+  it("uses plain messages for expected action failures", () => {
+    expect(runActionErrorMessage("repair_limit_reached", "fallback")).toContain("repair limit");
+    expect(runActionErrorMessage("rate_limited", "fallback")).toContain("too many requests");
+    expect(runActionErrorMessage("no_active_connection", "fallback")).toContain("Reconnect");
+    expect(runActionErrorMessage("unknown", "fallback")).toBe("fallback");
   });
 });
 
@@ -120,6 +145,45 @@ describe("RunEvidence", () => {
   });
 });
 
+describe("RunActions", () => {
+  const render = (status: RunView["run"]["status"], overrides: Partial<Parameters<typeof RunActions>[0]> = {}) => {
+    const data = view(status);
+    data.attempts = [{
+      id: "attempt-1", runId: "run-1", stepKey: "action", attemptNo: 1, status,
+      configSnapshot: {}, idempotencyKey: "hidden", startedAt: "2026-09-28T12:00:00.000Z",
+    }];
+    return renderToStaticMarkup(createElement(RunActions, {
+      view: data, busy: null, diagnosisId: null, confirmUncertain: false, error: null,
+      onConfirmUncertain: () => {}, onDiagnose: () => {}, onRetry: () => {}, ...overrides,
+    }));
+  };
+
+  it("offers no diagnosis or retry for running or successful actions", () => {
+    expect(render("running")).toBe("");
+    expect(render("succeeded")).toBe("");
+  });
+
+  it("offers guarded actions for a failure", () => {
+    const html = render("failed");
+    expect(html).toContain("Diagnose");
+    expect(html).toContain("Retry");
+    expect(html).not.toContain("confirm before retrying");
+  });
+
+  it("requires confirmation for an uncertain retry", () => {
+    const html = render("uncertain");
+    expect(html).toContain("may already have occurred");
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Retry<\/button>/);
+    expect(render("uncertain", { confirmUncertain: true })).not.toMatch(/<button[^>]*disabled=""[^>]*>Retry<\/button>/);
+  });
+
+  it("uses an existing diagnosis instead of offering another request", () => {
+    const html = render("failed", { diagnosisId: "diagnosis-1" });
+    expect(html).toContain("Diagnosis ready.");
+    expect(html).not.toContain(">Diagnose<");
+  });
+});
+
 describe("loadRun", () => {
   it("validates the run response", async () => {
     const fetchRequest = async () => Response.json(view("failed"));
@@ -138,5 +202,24 @@ describe("loadRun", () => {
       code: "not_found",
       message: "Run not found.",
     });
+  });
+
+  it("sends only approved retry, diagnosis, and event fields", async () => {
+    const calls: Array<{ input: string; init?: RequestInit }> = [];
+    const fetchRequest = async (input: string, init?: RequestInit) => {
+      calls.push({ input, init });
+      if (input.endsWith("/retry")) return Response.json(view("failed"));
+      if (input.endsWith("/diagnosis")) return Response.json({ diagnosis: { id: "diagnosis-1" }, proposal: null });
+      return new Response(null, { status: 204 });
+    };
+
+    await retryRun("run-1", true, fetchRequest);
+    await expect(requestDiagnosis("run-1", fetchRequest)).resolves.toBe("diagnosis-1");
+    await recordFailureOpened("run-1", fetchRequest);
+
+    expect(calls[0]).toMatchObject({ input: "/api/runs/run-1/retry", init: { method: "POST" } });
+    expect(JSON.parse(String(calls[0]?.init?.body))).toEqual({ confirmUncertain: true });
+    expect(calls[1]).toMatchObject({ input: "/api/runs/run-1/diagnosis", init: { method: "POST" } });
+    expect(JSON.parse(String(calls[2]?.init?.body))).toEqual({ type: "failure_opened", runId: "run-1" });
   });
 });
