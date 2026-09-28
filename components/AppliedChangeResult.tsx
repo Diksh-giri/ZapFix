@@ -1,5 +1,6 @@
 import type { AppliedChangeView } from "@/lib/schemas/change-results";
 import { describeResultValue, type RetryOutcome } from "@/lib/result-recovery";
+import { Button } from "@/components/ui/button";
 
 const OUTCOME_TEXT: Record<Exclude<RetryOutcome, "running">, { heading: string; detail: string }> = {
   resolved: {
@@ -16,7 +17,25 @@ const OUTCOME_TEXT: Record<Exclude<RetryOutcome, "running">, { heading: string; 
   },
 };
 
-export function AppliedChangeResult({ change, outcome }: { change: AppliedChangeView; outcome: RetryOutcome | null }) {
+interface AppliedChangeResultProps {
+  change: AppliedChangeView;
+  outcome: RetryOutcome | null;
+  restoreState?: "idle" | "confirming" | "conflict" | "restoring" | "restored";
+  restoreError?: string | null;
+  onRequestRestore?: () => void;
+  onCancelRestore?: () => void;
+  onConfirmRestore?: (overwrite: boolean) => void;
+}
+
+export function AppliedChangeResult({
+  change,
+  outcome,
+  restoreState = "idle",
+  restoreError = null,
+  onRequestRestore,
+  onCancelRestore,
+  onConfirmRestore,
+}: AppliedChangeResultProps) {
   const result = outcome && outcome !== "running" ? OUTCOME_TEXT[outcome] : null;
   return (
     <section className="space-y-3 rounded-md border p-4" aria-labelledby="applied-change-heading">
@@ -34,6 +53,41 @@ export function AppliedChangeResult({ change, outcome }: { change: AppliedChange
           <p className="text-sm text-neutral-600">{result.detail}</p>
         </div>
       ) : null}
+      <div className="space-y-3 border-t pt-3">
+        {restoreState === "restored" ? (
+          <div role="status" className="space-y-1">
+            <p className="font-medium">Previous setting restored</p>
+            <p className="text-sm text-neutral-600">Restore changed ZapFix settings only. It did not undo actions already taken in a connected app.</p>
+          </div>
+        ) : restoreState === "confirming" ? (
+          <div role="alertdialog" aria-labelledby="restore-confirm-heading" aria-describedby="restore-confirm-description" className="space-y-3">
+            <h4 id="restore-confirm-heading" className="font-medium">Restore the previous setting?</h4>
+            <p id="restore-confirm-description" className="text-sm text-neutral-600">
+              This restores the previous ZapFix setting. It cannot undo actions already taken in Google Calendar, Gmail, Drive, Slack, or Sheets.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => onConfirmRestore?.(false)}>Confirm restore</Button>
+              <Button variant="outline" onClick={onCancelRestore}>Cancel</Button>
+            </div>
+          </div>
+        ) : restoreState === "conflict" ? (
+          <div role="alertdialog" aria-labelledby="restore-conflict-heading" aria-describedby="restore-conflict-description" className="space-y-3">
+            <h4 id="restore-conflict-heading" className="font-medium">This setting was edited by hand</h4>
+            <p id="restore-conflict-description" className="text-sm text-neutral-600">
+              Restoring will overwrite the newer manual edit. Continue only if you want the approved change’s original value restored.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => onConfirmRestore?.(true)}>Overwrite and restore</Button>
+              <Button variant="outline" onClick={onCancelRestore}>Keep manual edit</Button>
+            </div>
+          </div>
+        ) : restoreState === "restoring" ? (
+          <Button disabled aria-busy="true">Restoring...</Button>
+        ) : (
+          <Button variant="outline" onClick={onRequestRestore}>Restore previous setting</Button>
+        )}
+        {restoreError ? <p role="alert" className="text-sm text-red-700">{restoreError}</p> : null}
+      </div>
     </section>
   );
 }

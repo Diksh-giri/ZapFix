@@ -191,6 +191,7 @@ Owners: **D** = Dikshyant (safety core + AI client), **J** = James (experience, 
 
 ### T20. Result and restore views (J, M)
 **Depends on:** T14. **Build:** after Confirm show "Change applied" with original and updated values and the approval record; a Retry result banner (resolved / same error / new error; new error starts a new diagnosis); **Restore** with the `manual_edit_conflict` warning and confirmation; a note that Restore reverts ZapFix settings only. After two failed repairs show the hand-over message (`repair_limit_reached`).
+**Status:** Code complete and tested (2026-09-28), branch `j/T20-result-restore`: browser-safe confirm/restore result schemas; applied-change summary with the original and updated mapping plus approval record; retry classification for resolved, repeated, different and running outcomes; automatic diagnosis for a different retry error; guarded restore confirmation; explicit manual-edit overwrite warning; duplicate-action protection; and restored-state feedback that explains external app actions are not undone. The T18/T21 run-detail flow supplies retry and repair-limit behavior; T19 will pass the applied-change result into this view after its confirm dialog lands. Focused component/client tests, `npm run check`, `npm run eval`, and `npm run build` pass.
 **Acceptance:** verify and restore flows work; conflict warning appears when the setting was edited by hand.
 
 ### T21. Manual mode and per-category tips (J, S)

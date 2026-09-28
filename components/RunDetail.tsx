@@ -14,7 +14,7 @@ import {
   shouldRecordFailureOpened,
   shouldPollRun,
 } from "@/lib/run-detail";
-import { loadDiagnosis, loadRun, recordFailureOpened, requestDiagnosis, retryRun, RunRequestError } from "@/lib/runs-client";
+import { loadDiagnosis, loadRun, recordFailureOpened, requestDiagnosis, restoreAppliedChange, retryRun, RunRequestError } from "@/lib/runs-client";
 import type { DiagnosisView } from "@/lib/schemas/diagnosis";
 import type { AppliedChangeView } from "@/lib/schemas/change-results";
 import type { RunView } from "@/lib/schemas/runs";
@@ -128,7 +128,7 @@ export function RunEvidence({ view }: { view: RunView }) {
 
 interface RunActionsProps {
   view: RunView;
-  busy: "diagnose" | "retry" | null;
+  busy: "diagnose" | "retry" | "restore" | null;
   diagnosisId: string | null;
   confirmUncertain: boolean;
   error: string | null;
@@ -229,17 +229,24 @@ export function RunDetail({
   appliedChange?: AppliedChangeView | null;
 }) {
   const [state, dispatch] = useReducer(runDetailReducer, initialRunDetailState);
-  const [busy, setBusy] = useState<"diagnose" | "retry" | null>(null);
+  const [busy, setBusy] = useState<"diagnose" | "retry" | "restore" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [diagnosisState, setDiagnosisState] = useState<{ runId: string; value: DiagnosisView } | null>(null);
   const [repairLimitState, setRepairLimitState] = useState<{ runId: string; reached: true } | null>(null);
   const [confirmUncertain, setConfirmUncertain] = useState(false);
   const [retryOutcomeState, setRetryOutcomeState] = useState<{ runId: string; value: RetryOutcome } | null>(null);
+  const [restoreView, setRestoreView] = useState<{
+    changeId: string;
+    state: "idle" | "confirming" | "conflict" | "restoring" | "restored";
+    error: string | null;
+  } | null>(null);
   const openedRuns = useRef(new Set<string>());
   const actionRunner = useRef(createExclusiveActionRunner());
   const diagnosis = diagnosisState?.runId === runId ? diagnosisState.value : null;
   const repairLimitReached = repairLimitState?.runId === runId;
   const retryOutcome = retryOutcomeState?.runId === runId ? retryOutcomeState.value : null;
+  const restoreState = appliedChange && restoreView?.changeId === appliedChange.configChangeId ? restoreView.state : "idle";
+  const restoreError = appliedChange && restoreView?.changeId === appliedChange.configChangeId ? restoreView.error : null;
 
   const refresh = useCallback(async () => {
     dispatch({ type: "load_started" });
@@ -343,6 +350,28 @@ export function RunDetail({
     }
   });
 
+  const restore = (confirmOverwrite: boolean) => actionRunner.current(async () => {
+    if (!appliedChange) return;
+    const changeId = appliedChange.configChangeId;
+    setBusy("restore"); setRestoreView({ changeId, state: "restoring", error: null });
+    try {
+      await restoreAppliedChange(changeId, confirmOverwrite);
+      setRestoreView({ changeId, state: "restored", error: null });
+    } catch (caught) {
+      if (caught instanceof RunRequestError && caught.code === "manual_edit_conflict") {
+        setRestoreView({ changeId, state: "conflict", error: null });
+        return;
+      }
+      setRestoreView({
+        changeId,
+        state: "idle",
+        error: caught instanceof Error ? caught.message : "The previous setting could not be restored.",
+      });
+    } finally {
+      setBusy(null);
+    }
+  });
+
   if (state.status === "idle" || (state.status === "loading" && !state.view)) {
     return <p role="status">Loading run...</p>;
   }
@@ -362,7 +391,21 @@ export function RunDetail({
   return (
     <section className="space-y-2 border-t pt-6" aria-labelledby="run-detail-heading">
       <h2 id="run-detail-heading" className="text-lg font-semibold">Latest test run</h2>
-      {appliedChange ? <AppliedChangeResult change={appliedChange} outcome={retryOutcome} /> : null}
+      {appliedChange ? (
+        <AppliedChangeResult
+          change={appliedChange}
+          outcome={retryOutcome}
+          restoreState={restoreState}
+          restoreError={restoreError}
+          onRequestRestore={() => {
+            if (busy === null) setRestoreView({ changeId: appliedChange.configChangeId, state: "confirming", error: null });
+          }}
+          onCancelRestore={() => {
+            if (busy === null) setRestoreView({ changeId: appliedChange.configChangeId, state: "idle", error: null });
+          }}
+          onConfirmRestore={(overwrite) => { if (busy === null) void restore(overwrite); }}
+        />
+      ) : null}
       <RunEvidence view={view} />
       <RunActions
         view={view}

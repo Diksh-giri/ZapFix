@@ -11,7 +11,7 @@ import {
   shouldRecordFailureOpened,
   shouldPollRun,
 } from "@/lib/run-detail";
-import { loadRun, recordFailureOpened, requestDiagnosis, retryRun, RunRequestError } from "@/lib/runs-client";
+import { loadRun, recordFailureOpened, requestDiagnosis, restoreAppliedChange, retryRun, RunRequestError } from "@/lib/runs-client";
 import type { RunView } from "@/lib/schemas/runs";
 import type { DiagnosisView } from "@/lib/schemas/diagnosis";
 import { AppliedChangeViewSchema, ConfirmResultSchema, RestoreResultSchema } from "@/lib/schemas/change-results";
@@ -186,6 +186,47 @@ describe("applied change and retry results", () => {
     expect(renderToStaticMarkup(createElement(AppliedChangeResult, { change, outcome: "resolved" }))).toContain("retry succeeded");
     expect(renderToStaticMarkup(createElement(AppliedChangeResult, { change, outcome: "same_error" }))).toContain("same error occurred again");
     expect(renderToStaticMarkup(createElement(AppliedChangeResult, { change, outcome: "new_error" }))).toContain("started a new diagnosis");
+  });
+
+  it("renders an accessible restore confirmation, conflict warning, busy state, and completion", () => {
+    const change = {
+      configChangeId: "change-1", approvalId: "approval-1", fieldPath: "actionConfig.attendee_email",
+      originalValue: { kind: "static" as const, value: "old" }, updatedValue: { kind: "static" as const, value: "new" },
+    };
+    const render = (restoreState: "idle" | "confirming" | "conflict" | "restoring" | "restored") =>
+      renderToStaticMarkup(createElement(AppliedChangeResult, { change, outcome: null, restoreState }));
+
+    expect(render("idle")).toContain("Restore previous setting");
+    expect(render("confirming")).toContain('role="alertdialog"');
+    expect(render("confirming")).toContain("cannot undo actions already taken");
+    expect(render("conflict")).toContain("edited by hand");
+    expect(render("conflict")).toContain("Overwrite and restore");
+    expect(render("restoring")).toMatch(/<button[^>]*disabled=""[^>]*>Restoring\.\.\.<\/button>/);
+    expect(render("restored")).toContain('role="status"');
+    expect(render("restored")).toContain("Previous setting restored");
+  });
+
+  it("posts a guarded restore request and validates the result", async () => {
+    const fetchRequest = async (input: string, init?: RequestInit) => {
+      expect(input).toBe("/api/config-changes/change-1/restore");
+      expect(init).toMatchObject({ method: "POST", body: JSON.stringify({ confirmOverwrite: true }) });
+      return new Response(JSON.stringify({
+        configChangeId: "change-1",
+        status: "restored",
+        workflow: { id: "workflow-1", configVersion: 3, config: {} },
+        note: "Restore changes ZapFix settings only.",
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    };
+    await expect(restoreAppliedChange("change-1", true, fetchRequest)).resolves.toMatchObject({ status: "restored" });
+  });
+
+  it("surfaces manual-edit conflicts without losing the server error code", async () => {
+    const fetchRequest = async () => new Response(JSON.stringify({
+      error: { code: "manual_edit_conflict", message: "This setting was edited by hand." },
+    }), { status: 409, headers: { "content-type": "application/json" } });
+    await expect(restoreAppliedChange("change-1", false, fetchRequest)).rejects.toMatchObject({
+      code: "manual_edit_conflict",
+    });
   });
 });
 
