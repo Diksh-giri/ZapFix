@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { FieldMapper } from "@/components/FieldMapper";
 import { TriggerForm } from "@/components/TriggerForm";
+import { isRunnableApp } from "@/components/WorkflowsScreen";
 
 const triggerSchema = { fields: [
   { key: "title", label: "Title", type: "text" as const },
@@ -29,5 +30,19 @@ describe("workflow form components", () => {
     expect(html).toContain('type="text"');
     expect(html).toContain('type="date"');
     expect(html).toContain("Run test");
+  });
+
+  it("disables test input and submission while edits are unsaved", () => {
+    const html = renderToStaticMarkup(createElement(TriggerForm, {
+      triggerSchema, disabled: true, onRun: vi.fn(),
+    }));
+    expect(html).toContain("<fieldset");
+    expect(html.match(/disabled/g)?.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("hides adapters that cannot execute yet", () => {
+    const base = { provider: "google" as const, actions: [] };
+    expect(isRunnableApp({ ...base, id: "google_calendar" })).toBe(true);
+    expect(isRunnableApp({ ...base, id: "google_sheets" })).toBe(false);
   });
 });

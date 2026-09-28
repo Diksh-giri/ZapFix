@@ -35,6 +35,7 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
 
   const app = workflow ? apps.find((item) => item.id === workflow.app) : undefined;
   const action = app?.actions.find((item) => item.key === workflow?.actionKey);
+  const hasUnsavedChanges = name !== workflow?.name || JSON.stringify(config) !== JSON.stringify(workflow?.actionConfig);
 
   async function save() {
     if (!workflow) return;
@@ -75,9 +76,15 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
         {error?.includes("Refresh") ? <Button variant="outline" onClick={() => { setStatus("loading"); void refreshWorkflow(); }}>Refresh</Button> : null}
       </div>
       <section className="border-t pt-6">
+        {hasUnsavedChanges ? (
+          <p className="mb-4 text-sm text-amber-800" role="status">
+            Save your changes before running a test so the displayed settings match the settings ZapFix executes.
+          </p>
+        ) : null}
         <TriggerForm
           triggerSchema={workflow.triggerSchema}
           busy={running}
+          disabled={hasUnsavedChanges}
           onRun={async (data) => {
             setRunning(true); setError(null); setMessage(null);
             try {

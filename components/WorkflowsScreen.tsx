@@ -23,6 +23,10 @@ function emptyConfig(fields: Array<{ key: string }>): ActionConfig {
   return Object.fromEntries(fields.map((field) => [field.key, { kind: "static", value: "" }]));
 }
 
+export function isRunnableApp(app: AppCatalogItem): boolean {
+  return app.id !== "google_sheets";
+}
+
 export function WorkflowsScreen() {
   const router = useRouter();
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -42,7 +46,7 @@ export function WorkflowsScreen() {
     try {
       const [items, setup] = await Promise.all([loadWorkflows(), loadWorkflowSetup()]);
       setWorkflows(items);
-      setApps(setup.apps);
+      setApps(setup.apps.filter(isRunnableApp));
       setConnections(setup.connections);
       setStatus("ready");
     } catch {
