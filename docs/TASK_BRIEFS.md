@@ -174,6 +174,7 @@ Owners: **D** = Dikshyant (safety core + AI client), **J** = James (experience, 
 
 ### T18. Run detail screen (J, M)
 **Depends on:** T12. **Start here:** `components/StepStatusList.tsx`, `app/workflows/[id]/page.tsx`.
+**Status:** Done (2026-09-28): a newly started test opens its run details; running attempts poll every 1.5 seconds; the screen separates the successful built-in form trigger from the external action; shows submitted trigger data, UTC timestamps, chronological attempt history, and only the sanitized standard error; and preserves the last successful view through refresh failures. Failed and uncertain runs record `failure_opened` once and offer guarded Diagnose and Retry actions. Existing diagnoses are reused, double submissions are blocked, successful/running attempts cannot be retried, and uncertain retries require explicit confirmation before `confirmUncertain: true` is sent. `npm run check`, `npm run eval`, and `npm run build` pass. Manual review with the configured local application completed successfully on 2026-09-28.
 **Build:** step status list, the data passed (trigger data), the original error (sanitized) when failed, attempt history, **Diagnose** and **Retry** buttons. Disable Retry while an attempt is running; for `uncertain` show the warning and require explicit confirmation before sending `confirmUncertain: true`. Log `failure_opened` once via `POST /api/events`.
 **Acceptance:** live status updates via polling; failure view shows failed step, steps that succeeded before, and the original error.
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { FieldMapper } from "@/components/FieldMapper";
+import { RunDetail } from "@/components/RunDetail";
 import { TriggerForm } from "@/components/TriggerForm";
 import type { ActionConfig } from "@/lib/schemas/workflow-config";
 import type { AppCatalogItem, Workflow } from "@/lib/schemas/workflows";
@@ -19,6 +20,7 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
   const [running, setRunning] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [runId, setRunId] = useState<string | null>(null);
 
   const refreshWorkflow = useCallback(async () => {
     try {
@@ -89,14 +91,19 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
             setRunning(true); setError(null); setMessage(null);
             try {
               const result = await runWorkflow(workflow.id, data);
-              const runId = result && typeof result === "object" && "id" in result ? String(result.id) : null;
-              setMessage(runId ? `Test started. Run ${runId}` : "Test started.");
+              const startedRunId = result && typeof result === "object" && "run" in result
+                && result.run && typeof result.run === "object" && "id" in result.run
+                ? String(result.run.id)
+                : null;
+              setRunId(startedRunId);
+              setMessage(startedRunId ? "Test started. Run details appear below." : "Test started.");
             } catch (caught) {
               setError(caught instanceof Error ? caught.message : "The test could not be started.");
             } finally { setRunning(false); }
           }}
         />
       </section>
+      {runId ? <RunDetail runId={runId} /> : null}
     </div>
   );
 }
