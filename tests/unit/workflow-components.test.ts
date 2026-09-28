@@ -18,9 +18,11 @@ describe("workflow form components", () => {
       value: { start: { kind: "mapped", source: "date" } },
       onChange: vi.fn(),
     }));
-    expect(html).toContain("Start (required)");
+    expect(html).toContain("Where should start come from? (required)");
     expect(html).toContain("Convert date for this app");
-    expect(html).toContain("Fixed value");
+    expect(html).toContain("Use an answer from the test form");
+    expect(html).toContain("Use the same value every time");
+    expect(html).toContain("Start will use the selected test-form answer each time this workflow runs.");
   });
 
   it("uses human date-time and time-zone controls for a fixed datetime", () => {
@@ -35,7 +37,7 @@ describe("workflow form components", () => {
     expect(html).toContain('value="2026-10-01T14:30"');
     expect(html).toContain('value="America/New_York" selected=""');
     expect(html).toContain("converts this to the app&#x27;s required date format automatically");
-    expect(html).not.toContain("Start fixed value");
+    expect(html).not.toContain("Start value used every time");
   });
 
   it("renders one correctly typed input per trigger field", () => {

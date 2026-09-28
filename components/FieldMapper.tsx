@@ -65,14 +65,16 @@ export function FieldMapper({
 
   return (
     <fieldset className="space-y-4">
-      <legend className="text-base font-semibold">Map action fields</legend>
-      <p className="text-sm text-neutral-600">Choose form data or a fixed value for each action field.</p>
+      <legend className="text-base font-semibold">Choose what the app should use</legend>
+      <p className="text-sm text-neutral-600">
+        For each item, choose whether it changes with every run or always stays the same.
+      </p>
       {fields.map((field) => {
         const mapping = value[field.key] ?? { kind: "static" as const, value: "" };
         return (
           <div className="rounded-lg border p-4" key={field.key}>
             <label className="text-sm font-medium" htmlFor={`${field.key}-kind`}>
-              {field.label}{field.required ? " (required)" : ""}
+              Where should {field.label.toLowerCase()} come from?{field.required ? " (required)" : ""}
             </label>
             <div className="mt-2 grid gap-3 sm:grid-cols-2">
               <select
@@ -83,8 +85,8 @@ export function FieldMapper({
                   ? { kind: "mapped", source: triggerSchema.fields[0]?.key ?? "" }
                   : { kind: "static", value: "" })}
               >
-                <option value="mapped">Form field</option>
-                <option value="static">Fixed value</option>
+                <option value="mapped">Use an answer from the test form</option>
+                <option value="static">Use the same value every time</option>
               </select>
               {mapping.kind === "static" && field.type === "datetime_rfc3339" ? (
                 <DateTimeStaticInput
@@ -96,14 +98,15 @@ export function FieldMapper({
               ) : mapping.kind === "static" ? (
                 <input
                   className={inputClass}
-                  aria-label={`${field.label} fixed value`}
+                  aria-label={`${field.label} value used every time`}
+                  placeholder={`Enter the ${field.label.toLowerCase()} to use every time`}
                   value={mapping.value}
                   onChange={(event) => set(field.key, { kind: "static", value: event.target.value })}
                 />
               ) : (
                 <select
                   className={inputClass}
-                  aria-label={`${field.label} form field`}
+                  aria-label={`Choose the test-form answer for ${field.label}`}
                   value={mapping.source}
                   onChange={(event) => set(field.key, { ...mapping, source: event.target.value })}
                 >
@@ -115,7 +118,7 @@ export function FieldMapper({
             </div>
             {mapping.kind === "mapped" ? (
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <label className="text-sm text-neutral-600" htmlFor={`${field.key}-transform`}>Optional transform</label>
+                <label className="text-sm text-neutral-600" htmlFor={`${field.key}-transform`}>Optional formatting</label>
                 <select
                   id={`${field.key}-transform`}
                   className={inputClass}
@@ -135,6 +138,11 @@ export function FieldMapper({
                 </select>
               </div>
             ) : null}
+            <p className="mt-3 text-xs text-neutral-500">
+              {mapping.kind === "mapped"
+                ? `${field.label} will use the selected test-form answer each time this workflow runs.`
+                : `${field.label} will use this same value every time this workflow runs.`}
+            </p>
           </div>
         );
       })}
