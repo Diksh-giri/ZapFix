@@ -1,4 +1,5 @@
 import type { Classification, RuleInput, RuleMatch } from "./types";
+import { maskQuotedValues } from "@/server/diagnosis/ai/payload";
 import { ceilingFor } from "./ceiling";
 import { matchMissingRequiredField } from "./missing-required-field";
 import { matchInvalidFormat } from "./invalid-format";
@@ -27,7 +28,7 @@ export function classify(input: RuleInput): Classification {
   return {
     category: "unsupported",
     supported: false,
-    evidence: [{ label: "App error", value: `${input.error.code}: ${input.error.message}` }],
+    evidence: [{ label: "App error", value: `${input.error.code}: ${maskQuotedValues(input.error.message)}` }],
     candidates: [],
     ceiling: "low",
   };

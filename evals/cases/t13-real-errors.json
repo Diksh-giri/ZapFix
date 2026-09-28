@@ -1,0 +1,54 @@
+[
+  {
+    "id": "calendar-invalid-date-one-valid-format",
+    "note": "From tests/fixtures/google-calendar/invalid_date_format.json.",
+    "input": {
+      "error": { "category_hint": "invalid_value", "code": "badRequest", "message": "Bad Request", "field": "start", "retryable": false, "outcome": "not_executed" },
+      "config": { "start": { "kind": "mapped", "source": "date" } },
+      "resolved": { "start": "03/15/2026" },
+      "triggerData": { "date": "03/15/2026" },
+      "triggerSchema": { "fields": [{ "key": "date", "label": "Date", "type": "date" }] },
+      "actionFields": [{ "key": "start", "label": "Start", "required": true, "type": "datetime_rfc3339" }]
+    },
+    "expected": { "category": "invalid_format", "supported": true, "candidateIds": ["transform:start:MM/DD/YYYY"], "ceiling": "high" }
+  },
+  {
+    "id": "calendar-ambiguous-date-two-valid-formats",
+    "note": "Both interpretations are real calendar dates, so the user must choose.",
+    "input": {
+      "error": { "category_hint": "invalid_value", "code": "badRequest", "message": "Bad Request", "field": "start", "retryable": false, "outcome": "not_executed" },
+      "config": { "start": { "kind": "mapped", "source": "date" } },
+      "resolved": { "start": "03/04/2026" },
+      "triggerData": { "date": "03/04/2026" },
+      "triggerSchema": { "fields": [{ "key": "date", "label": "Date", "type": "date" }] },
+      "actionFields": [{ "key": "start", "label": "Start", "required": true, "type": "datetime_rfc3339" }]
+    },
+    "expected": { "category": "invalid_format", "supported": true, "candidateIds": ["transform:start:MM/DD/YYYY", "transform:start:DD/MM/YYYY"], "ceiling": "medium" }
+  },
+  {
+    "id": "calendar-invalid-token-reconnect",
+    "note": "From tests/fixtures/google-calendar/invalid_token.json.",
+    "input": {
+      "error": { "category_hint": "auth", "code": "authError", "message": "Invalid Credentials", "retryable": false, "outcome": "not_executed" },
+      "config": {},
+      "resolved": {},
+      "triggerData": {},
+      "triggerSchema": { "fields": [{ "key": "value", "label": "Value", "type": "text" }] },
+      "actionFields": []
+    },
+    "expected": { "category": "expired_connection", "supported": true, "candidateIds": ["reconnect"], "ceiling": "high" }
+  },
+  {
+    "id": "gmail-invalid-recipient-has-no-safe-transform",
+    "note": "From tests/fixtures/gmail/invalid_to.json. Diagnosis is supported but no closed-list transform can invent a valid email.",
+    "input": {
+      "error": { "category_hint": "invalid_value", "code": "invalidArgument", "message": "Invalid To header", "field": "to", "retryable": false, "outcome": "not_executed" },
+      "config": { "to": { "kind": "mapped", "source": "recipient" } },
+      "resolved": { "to": "not-an-email" },
+      "triggerData": { "recipient": "not-an-email" },
+      "triggerSchema": { "fields": [{ "key": "recipient", "label": "Recipient", "type": "text" }] },
+      "actionFields": [{ "key": "to", "label": "To", "required": true, "type": "email" }]
+    },
+    "expected": { "category": "invalid_format", "supported": true, "candidateIds": [], "ceiling": "low" }
+  }
+]

@@ -56,5 +56,6 @@ export interface RunStore {
   listAttempts(runId: string): Promise<AttemptRecord[]>;
   insertAttempt(attempt: NewAttempt): Promise<AttemptRecord>;
   updateAttempt(id: string, patch: Partial<AttemptRecord>): Promise<void>;
+  latestDiagnosisId(runId: string): Promise<string | undefined>;
   lastChangeAppliedAt(runId: string): Promise<Date | undefined>;
 }

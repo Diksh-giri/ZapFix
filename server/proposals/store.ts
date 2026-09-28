@@ -82,7 +82,7 @@ export interface ProposalStore {
    * as the new pending proposal (when there is one). A new diagnosis retires the old proposal even
    * if it offers no fix. Decided proposals are never touched.
    */
-  replacePending(workflowId: string, draft: ProposalDraft | null): Promise<ProposalRecord | null>;
+  replacePending(workflowId: string, diagnosisId: string, draft: ProposalDraft | null): Promise<ProposalRecord | null>;
   /** Runs `fn` as one all-or-nothing transaction. If `fn` throws, nothing it wrote is kept. */
   transaction<T>(fn: (tx: ProposalTx) => Promise<T>): Promise<T>;
 }

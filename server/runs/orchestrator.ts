@@ -33,6 +33,7 @@ export interface RunEngineDeps {
 export interface RunView {
   run: RunRecord;
   attempts: AttemptRecord[];
+  latestDiagnosisId: string | null;
 }
 
 export function createRunEngine(deps: RunEngineDeps) {
@@ -163,8 +164,8 @@ export function createRunEngine(deps: RunEngineDeps) {
       await loadOwnedRun(runId, userId);
       const attempts = await reconcile(runId);
       const run = await loadOwnedRun(runId, userId);
-      // TODO(T13): include the latest diagnosis id.
-      return { run, attempts };
+      const latestDiagnosisId = (await store.latestDiagnosisId(runId)) ?? null;
+      return { run, attempts, latestDiagnosisId };
     },
 
     async retryFailedStep(

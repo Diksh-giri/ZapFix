@@ -37,7 +37,7 @@ async function reset() {
     triggerSchema: { fields: [{ key: "email", label: "Email", type: "email" }] },
     actionConfig: config,
   });
-  await db!.insert(runs).values({ id: RUN, workflowId: WORKFLOW, userId: USER, triggerData: {} });
+  await db!.insert(runs).values({ id: RUN, workflowId: WORKFLOW, userId: USER, triggerData: {}, status: "failed" });
   await db!.insert(stepAttempts).values({
     id: ATTEMPT,
     runId: RUN,
@@ -169,6 +169,36 @@ describe.skipIf(!enabled)("proposals on a real database (scratch only)", () => {
     const status = async (id: string) => (await db!.select().from(proposals).where(eq(proposals.id, id)))[0]!.status;
     expect(await status(first.id)).toBe("superseded");
     expect(await status(second.id)).toBe("pending");
+  });
+
+  it("refuses a proposal when the repair limit is reached after diagnosis was saved", async () => {
+    const store = createDrizzleProposalStore(db!);
+    await db!.update(runs).set({ repairCount: 2 }).where(eq(runs.id, RUN));
+
+    await expect(newProposal(store)).rejects.toMatchObject({ code: "repair_limit_reached" });
+    expect(await db!.select().from(proposals)).toHaveLength(0);
+  });
+
+  it("refuses a proposal when a newer attempt finishes after diagnosis was saved", async () => {
+    const store = createDrizzleProposalStore(db!);
+    await db!.insert(stepAttempts).values({
+      runId: RUN,
+      stepKey: "create_event",
+      attemptNo: 2,
+      status: "failed",
+      configSnapshot: config,
+      idempotencyKey: "r:a:2",
+      errorStd: {
+        category_hint: "missing_field",
+        code: "newer_failure",
+        message: "A newer attempt failed.",
+        retryable: false,
+        outcome: "not_executed",
+      },
+    });
+
+    await expect(newProposal(store)).rejects.toMatchObject({ code: "conflict" });
+    expect(await db!.select().from(proposals)).toHaveLength(0);
   });
 
   it("SAFETY TEST 6: restore returns the exact before value, and a hand edit gives manual_edit_conflict", async () => {

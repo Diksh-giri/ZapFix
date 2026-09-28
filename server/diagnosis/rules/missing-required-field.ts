@@ -1,4 +1,5 @@
 import type { FieldType } from "@/server/adapters/types";
+import { maskQuotedValues } from "@/server/diagnosis/ai/payload";
 import type { Candidate, Evidence, RuleInput, RuleMatch } from "./types";
 
 /**
@@ -43,7 +44,7 @@ export function matchMissingRequiredField(input: RuleInput): RuleMatch | null {
     }));
 
   const evidence: Evidence[] = [
-    { label: "App error", value: `${error.code}: ${error.message}` },
+    { label: "App error", value: `${error.code}: ${maskQuotedValues(error.message)}` },
     { label: "Failing field", value: actionField.label },
     { label: "Currently mapped to", value: `trigger field "${mapping.source}"` },
     { label: "Value received", value: "empty" },

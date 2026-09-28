@@ -162,6 +162,12 @@ describe("reconcile on read (safety test 11 support)", () => {
     const run = await engine().startRun("wf-1", USER, goodTrigger);
     await expect(engine().getRun(run.id, "user-2")).rejects.toMatchObject({ code: "not_found" });
   });
+
+  it("includes the latest diagnosis id for polling", async () => {
+    const run = await engine().startRun("wf-1", USER, { ...goodTrigger, email: "" });
+    store.setLatestDiagnosis(run.id, "diagnosis-1");
+    await expect(engine().getRun(run.id, USER)).resolves.toMatchObject({ latestDiagnosisId: "diagnosis-1" });
+  });
 });
 
 describe("retryFailedStep (safety tests 4 and 11)", () => {
