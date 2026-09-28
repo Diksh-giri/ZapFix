@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { ManualMode } from "@/components/ManualMode";
 import { Button } from "@/components/ui/button";
 import { StepStatusList } from "@/components/StepStatusList";
+import { manualModeReason } from "@/lib/manual-mode";
 import {
   createExclusiveActionRunner,
   initialRunDetailState,
@@ -11,7 +13,8 @@ import {
   shouldRecordFailureOpened,
   shouldPollRun,
 } from "@/lib/run-detail";
-import { loadRun, recordFailureOpened, requestDiagnosis, retryRun, RunRequestError } from "@/lib/runs-client";
+import { loadDiagnosis, loadRun, recordFailureOpened, requestDiagnosis, retryRun, RunRequestError } from "@/lib/runs-client";
+import type { DiagnosisView } from "@/lib/schemas/diagnosis";
 import type { RunView } from "@/lib/schemas/runs";
 
 const POLL_INTERVAL_MS = 1_500;
@@ -33,6 +36,12 @@ function formatTime(value: string): string {
     timeZone: "UTC",
     timeZoneName: "short",
   }).format(new Date(value));
+}
+
+function explainActionError(caught: unknown, fallback: string): string {
+  const code = caught instanceof RunRequestError ? caught.code : "request_failed";
+  const message = caught instanceof Error ? caught.message : fallback;
+  return runActionErrorMessage(code, message);
 }
 
 export function RunEvidence({ view }: { view: RunView }) {
@@ -174,14 +183,48 @@ export function RunActions({
   );
 }
 
+interface RunDiagnosisPanelProps {
+  view: RunView;
+  diagnosis: DiagnosisView | null;
+  repairLimitReached: boolean;
+  retrying: boolean;
+  onRetryDiagnosis: () => void;
+}
+
+export function RunDiagnosisPanel({
+  view,
+  diagnosis,
+  repairLimitReached,
+  retrying,
+  onRetryDiagnosis,
+}: RunDiagnosisPanelProps) {
+  const reason = manualModeReason(diagnosis, repairLimitReached);
+  const originalError = view.attempts.find((attempt) => attempt.errorStd)?.errorStd;
+  if (!reason || !originalError) return null;
+
+  return (
+    <ManualMode
+      reason={reason}
+      diagnosis={diagnosis}
+      originalError={originalError}
+      workflowId={view.run.workflowId}
+      retrying={retrying}
+      onRetryDiagnosis={onRetryDiagnosis}
+    />
+  );
+}
+
 export function RunDetail({ runId }: { runId: string }) {
   const [state, dispatch] = useReducer(runDetailReducer, initialRunDetailState);
   const [busy, setBusy] = useState<"diagnose" | "retry" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [diagnosisId, setDiagnosisId] = useState<string | null>(null);
+  const [diagnosisState, setDiagnosisState] = useState<{ runId: string; value: DiagnosisView } | null>(null);
+  const [repairLimitState, setRepairLimitState] = useState<{ runId: string; reached: true } | null>(null);
   const [confirmUncertain, setConfirmUncertain] = useState(false);
   const openedRuns = useRef(new Set<string>());
   const actionRunner = useRef(createExclusiveActionRunner());
+  const diagnosis = diagnosisState?.runId === runId ? diagnosisState.value : null;
+  const repairLimitReached = repairLimitState?.runId === runId;
 
   const refresh = useCallback(async () => {
     dispatch({ type: "load_started" });
@@ -214,19 +257,36 @@ export function RunDetail({ runId }: { runId: string }) {
     }
   }, [state.view]);
 
-  const explainActionError = (caught: unknown, fallback: string) => {
-    const code = caught instanceof RunRequestError ? caught.code : "request_failed";
-    const message = caught instanceof Error ? caught.message : fallback;
-    return runActionErrorMessage(code, message);
-  };
+  useEffect(() => {
+    const diagnosisId = state.view?.latestDiagnosisId;
+    if (!diagnosisId || diagnosis?.id === diagnosisId) return;
+    let cancelled = false;
+    void loadDiagnosis(diagnosisId)
+      .then((loaded) => {
+        if (!cancelled) {
+          setDiagnosisState({ runId, value: loaded });
+          setActionError(null);
+        }
+      })
+      .catch((caught) => {
+        if (!cancelled) setActionError(explainActionError(caught, "The diagnosis could not be loaded."));
+      });
+    return () => { cancelled = true; };
+  }, [diagnosis?.id, runId, state.view?.latestDiagnosisId]);
 
   const diagnose = () => actionRunner.current(async () => {
     setBusy("diagnose"); setActionError(null);
     try {
       const result = await requestDiagnosis(runId);
-      setDiagnosisId(result.diagnosis.id);
+      setDiagnosisState({ runId, value: result.diagnosis });
+      setRepairLimitState(null);
     } catch (caught) {
-      setActionError(explainActionError(caught, "The diagnosis could not be started."));
+      if (caught instanceof RunRequestError && caught.code === "repair_limit_reached") {
+        setRepairLimitState({ runId, reached: true });
+        setActionError(null);
+      } else {
+        setActionError(explainActionError(caught, "The diagnosis could not be started."));
+      }
     } finally {
       setBusy(null);
     }
@@ -273,12 +333,19 @@ export function RunDetail({ runId }: { runId: string }) {
       <RunActions
         view={view}
         busy={busy}
-        diagnosisId={diagnosisId ?? view.latestDiagnosisId}
+        diagnosisId={diagnosis?.id ?? view.latestDiagnosisId ?? (repairLimitReached ? "repair-limit" : null)}
         confirmUncertain={confirmUncertain}
         error={actionError}
         onConfirmUncertain={setConfirmUncertain}
         onDiagnose={() => void diagnose()}
         onRetry={() => void retry()}
+      />
+      <RunDiagnosisPanel
+        view={view}
+        diagnosis={diagnosis}
+        repairLimitReached={repairLimitReached}
+        retrying={busy === "diagnose"}
+        onRetryDiagnosis={() => void diagnose()}
       />
       {state.status === "loading" ? <p className="text-sm" role="status">Checking run status...</p> : null}
       {state.status === "error" ? (

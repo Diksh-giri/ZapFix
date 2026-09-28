@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { RunActions, RunEvidence } from "@/components/RunDetail";
+import { RunActions, RunDiagnosisPanel, RunEvidence } from "@/components/RunDetail";
 import {
   createExclusiveActionRunner,
   initialRunDetailState,
@@ -12,6 +12,7 @@ import {
 } from "@/lib/run-detail";
 import { loadRun, recordFailureOpened, requestDiagnosis, retryRun, RunRequestError } from "@/lib/runs-client";
 import type { RunView } from "@/lib/schemas/runs";
+import type { DiagnosisView } from "@/lib/schemas/diagnosis";
 
 const view = (status: RunView["run"]["status"]): RunView => ({
   run: {
@@ -26,6 +27,58 @@ const view = (status: RunView["run"]["status"]): RunView => ({
   attempts: [],
   latestDiagnosisId: null,
 });
+
+const diagnosis = (overrides: Partial<DiagnosisView> = {}): DiagnosisView => ({
+  id: "diagnosis-1",
+  attemptId: "attempt-1",
+  category: "missing_required_field",
+  supported: true,
+  evidence: [{ label: "Required field", value: "Attendee email is empty" }],
+  candidates: [{
+    id: "map:attendee_email:contact_email",
+    kind: "config_change",
+    fieldPath: "actionConfig.attendee_email",
+    proposedValue: { kind: "mapped", source: "contact_email" },
+    description: "Use contact email",
+  }],
+  ceiling: "high",
+  aiStatus: "ok",
+  ai: {
+    likely_cause: "The attendee email is empty.",
+    explanation: "The calendar action needs an attendee email.",
+    selected_candidate_id: "map:attendee_email:contact_email",
+    why_this_fix: "The form contains another email field.",
+    confidence: "high",
+    uncertainty_note: null,
+  },
+  confidence: "high",
+  model: "test-model",
+  createdAt: "2026-09-28T12:00:00.000Z",
+  ...overrides,
+});
+
+function failedView(): RunView {
+  const data = view("failed");
+  data.attempts = [{
+    id: "attempt-1",
+    runId: "run-1",
+    stepKey: "action",
+    attemptNo: 1,
+    status: "failed",
+    configSnapshot: {},
+    errorStd: {
+      category_hint: "missing_field",
+      code: "missing_required_field",
+      message: "An attendee email is required.",
+      field: "attendee_email",
+      retryable: false,
+      outcome: "not_executed",
+    },
+    idempotencyKey: "hidden-key",
+    startedAt: "2026-09-28T12:00:00.000Z",
+  }];
+  return data;
+}
 
 describe("runDetailReducer", () => {
   it("moves from selection to a loaded running view", () => {
@@ -196,6 +249,42 @@ describe("RunActions", () => {
     const html = render("failed", { diagnosisId: "diagnosis-1" });
     expect(html).toContain("Diagnosis ready.");
     expect(html).not.toContain(">Diagnose<");
+  });
+});
+
+describe("RunDiagnosisPanel", () => {
+  const render = (input: DiagnosisView | null, repairLimitReached = false, retrying = false) =>
+    renderToStaticMarkup(createElement(RunDiagnosisPanel, {
+      view: failedView(),
+      diagnosis: input,
+      repairLimitReached,
+      retrying,
+      onRetryDiagnosis: () => {},
+    }));
+
+  it.each([
+    ["unsupported", diagnosis({ supported: false })],
+    ["low confidence", diagnosis({ confidence: "low" })],
+    ["no candidates", diagnosis({ candidates: [] })],
+    ["AI unavailable", diagnosis({ aiStatus: "unavailable", ai: null, confidence: null })],
+    ["AI invalid", diagnosis({ aiStatus: "invalid", ai: null, confidence: null })],
+  ])("shows manual mode for %s", (_case, input) => {
+    expect(render(input)).toContain("Continue manually");
+  });
+
+  it("shows repair-limit manual mode without a diagnosis record", () => {
+    expect(render(null, true)).toContain("repair limit");
+  });
+
+  it("offers a guarded diagnosis retry only after an AI failure", () => {
+    const retrying = render(diagnosis({ aiStatus: "unavailable", ai: null, confidence: null }), false, true);
+    expect(retrying).toContain("Trying diagnosis again...");
+    expect(retrying).toMatch(/<button[^>]*disabled=""/);
+    expect(render(diagnosis({ confidence: "low" }))).not.toContain("Try diagnosis again");
+  });
+
+  it("renders nothing for a diagnosis that can continue to a proposal", () => {
+    expect(render(diagnosis())).toBe("");
   });
 });
 
