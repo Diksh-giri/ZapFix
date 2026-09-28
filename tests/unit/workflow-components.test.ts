@@ -18,7 +18,13 @@ describe("workflow form components", () => {
       value: { start: { kind: "mapped", source: "date" } },
       onChange: vi.fn(),
     }));
-    expect(html).toContain("Where should start come from? (required)");
+    expect(html).toContain("When should the event begin?");
+    expect(html).toContain("Required");
+    expect(html).toContain("How should ZapFix get this information?");
+    expect(html).toContain("Help for When should the event begin?");
+    expect(html).toContain("What this means");
+    expect(html).toContain("Choose the date, starting time, and time zone for the event.");
+    expect(html).toContain("October 5 at 4:00 PM, America/New York");
     expect(html).toContain("Convert date for this app");
     expect(html).toContain("Ask for it each time");
     expect(html).toContain("Use the same value every time");

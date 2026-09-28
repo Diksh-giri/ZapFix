@@ -1,14 +1,42 @@
 "use client";
 
+import { Info } from "lucide-react";
 import type { ActionField } from "@/lib/schemas/workflows";
 import type { ActionConfig, FieldMapping, TriggerSchema } from "@/lib/schemas/workflow-config";
 import { localDateTimeToRfc3339, rfc3339ToLocalDateTime } from "@/lib/local-datetime";
+import { helpForActionField, type FieldHelp } from "@/lib/workflow-field-help";
 
 const inputClass = "h-9 w-full rounded-md border border-neutral-300 bg-white px-3 text-sm";
 const TIME_ZONES = [
   "UTC", "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles",
   "Europe/London", "Europe/Paris", "Asia/Kolkata", "Asia/Tokyo", "Australia/Sydney",
 ];
+
+function InformationTip({ fieldKey, help }: { fieldKey: string; help: FieldHelp }) {
+  const tooltipId = `${fieldKey}-help`;
+  return (
+    <span className="group relative inline-flex">
+      <button
+        type="button"
+        className="inline-flex size-7 items-center justify-center rounded-full text-blue-700 hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none"
+        aria-label={`Help for ${help.question}`}
+        aria-describedby={tooltipId}
+      >
+        <Info aria-hidden="true" className="size-4" />
+      </button>
+      <span
+        id={tooltipId}
+        role="tooltip"
+        className="pointer-events-none absolute top-8 right-0 z-10 hidden w-72 rounded-lg border border-blue-200 bg-white p-3 text-left text-sm font-normal text-neutral-800 group-hover:block group-focus-within:block"
+      >
+        <strong className="block font-semibold">What this means</strong>
+        <span className="mt-1 block">{help.explanation}</span>
+        <strong className="mt-3 block font-semibold">Example</strong>
+        <span className="mt-1 block">{help.example}</span>
+      </span>
+    </span>
+  );
+}
 
 function DateTimeStaticInput({
   field, value, timeZone, onChange,
@@ -71,10 +99,20 @@ export function FieldMapper({
       </p>
       {fields.map((field) => {
         const mapping = value[field.key] ?? { kind: "static" as const, value: "" };
+        const help = helpForActionField(field);
         return (
           <div className="rounded-lg border p-4" key={field.key}>
-            <label className="text-sm font-medium" htmlFor={`${field.key}-kind`}>
-              Where should {field.label.toLowerCase()} come from?{field.required ? " (required)" : ""}
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="font-medium">{help.question}</h3>
+                {field.required ? (
+                  <span className="mt-1 inline-block rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-700">Required</span>
+                ) : null}
+              </div>
+              <InformationTip fieldKey={field.key} help={help} />
+            </div>
+            <label className="mt-3 block text-sm text-neutral-600" htmlFor={`${field.key}-kind`}>
+              How should ZapFix get this information?
             </label>
             <div className="mt-2 grid gap-3 sm:grid-cols-2">
               <select
