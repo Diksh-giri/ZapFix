@@ -33,7 +33,11 @@ export const FieldMappingSchema = z.discriminatedUnion("kind", [
     source: z.string().min(1), // key of a trigger field
     transform: TransformSchema.optional(),
   }),
-  z.object({ kind: z.literal("static"), value: z.string() }),
+  z.object({
+    kind: z.literal("static"),
+    value: z.string(),
+    timeZone: z.string().refine(isValidTimeZone, "Use a valid IANA time zone.").optional(),
+  }),
 ]);
 export type FieldMapping = z.infer<typeof FieldMappingSchema>;
 
