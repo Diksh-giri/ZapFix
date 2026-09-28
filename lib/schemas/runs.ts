@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ATTEMPT_STATUSES } from "@/lib/types";
+import { StandardErrorSchema } from "./standard-error";
 import { ActionConfigSchema, TriggerDataSchema } from "./workflow-config";
 
 export const RunAttemptSchema = z.object({
@@ -11,7 +12,7 @@ export const RunAttemptSchema = z.object({
   configSnapshot: ActionConfigSchema,
   requestSummary: z.record(z.string(), z.string()).optional(),
   errorRaw: z.record(z.string(), z.unknown()).optional(),
-  errorStd: z.record(z.string(), z.unknown()).optional(),
+  errorStd: StandardErrorSchema.optional(),
   idempotencyKey: z.string(),
   externalRef: z.string().optional(),
   startedAt: z.string(),
@@ -32,6 +33,7 @@ export const RunSchema = z.object({
 export const RunViewSchema = z.object({
   run: RunSchema,
   attempts: z.array(RunAttemptSchema),
+  latestDiagnosisId: z.string().nullable(),
 });
 
 export type RunView = z.infer<typeof RunViewSchema>;
