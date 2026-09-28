@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { FieldMapper } from "@/components/FieldMapper";
 import { TriggerForm } from "@/components/TriggerForm";
-import { isRunnableApp } from "@/components/WorkflowsScreen";
+import { isRunnableApp, triggerSchemaFor } from "@/components/WorkflowsScreen";
 
 const triggerSchema = { fields: [
   { key: "title", label: "Title", type: "text" as const },
@@ -48,6 +48,18 @@ describe("workflow form components", () => {
     expect(html).not.toContain("Start value used every time");
   });
 
+  it("uses a multiline control for fixed spreadsheet row values", () => {
+    const html = renderToStaticMarkup(createElement(FieldMapper, {
+      fields: [{ key: "values", label: "Row values", required: true, type: "text_list" }],
+      triggerSchema,
+      value: { values: { kind: "static", value: "Ada\nReady" } },
+      onChange: vi.fn(),
+    }));
+    expect(html).toContain("<textarea");
+    expect(html).toContain("Enter one cell value per line");
+    expect(html).toContain("Ada\nReady");
+  });
+
   it("renders one correctly typed input per trigger field", () => {
     const html = renderToStaticMarkup(createElement(TriggerForm, {
       triggerSchema, onRun: vi.fn(),
@@ -55,6 +67,15 @@ describe("workflow form components", () => {
     expect(html).toContain('type="text"');
     expect(html).toContain('type="date"');
     expect(html).toContain("Run test");
+  });
+
+  it("uses a multiline test-data control for a text-list trigger field", () => {
+    const html = renderToStaticMarkup(createElement(TriggerForm, {
+      triggerSchema: { fields: [{ key: "row_values", label: "Row values", type: "text_list" }] },
+      onRun: vi.fn(),
+    }));
+    expect(html).toContain("<textarea");
+    expect(html).toContain("Enter one cell value per line");
   });
 
   it("disables test input and submission while edits are unsaved", () => {
@@ -65,9 +86,17 @@ describe("workflow form components", () => {
     expect(html.match(/disabled/g)?.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("hides adapters that cannot execute yet", () => {
+  it("shows adapters that have executable actions", () => {
     const base = { provider: "google" as const, actions: [] };
-    expect(isRunnableApp({ ...base, id: "google_calendar" })).toBe(true);
+    const actions = [{ key: "append_row", label: "Append row", fields: [] }];
+    expect(isRunnableApp({ ...base, id: "google_calendar", actions })).toBe(true);
+    expect(isRunnableApp({ ...base, id: "google_sheets", actions })).toBe(true);
     expect(isRunnableApp({ ...base, id: "google_sheets" })).toBe(false);
+  });
+
+  it("adds a multiline row-values question to new Sheets workflows", () => {
+    const schema = triggerSchemaFor("google_sheets");
+    expect(schema.fields).toContainEqual({ key: "row_values", label: "Row values", type: "text_list" });
+    expect(triggerSchemaFor("google_calendar").fields).not.toContainEqual(expect.objectContaining({ type: "text_list" }));
   });
 });

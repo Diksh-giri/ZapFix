@@ -13,4 +13,11 @@ describe("workflow field help", () => {
     expect(helpForActionField({ key: "custom", label: "Custom detail", required: false, type: "text" }))
       .toMatchObject({ question: "What should ZapFix use for custom detail?" });
   });
+
+  it("explains Sheets fields and the one-line-per-cell format", () => {
+    expect(helpForActionField({ key: "sheet_name", label: "Sheet name", required: true, type: "text" }))
+      .toMatchObject({ question: "Which sheet tab should receive the row?", example: "Responses" });
+    expect(helpForActionField({ key: "values", label: "Row values", required: true, type: "text_list" }))
+      .toMatchObject({ question: "What should each cell in the new row contain?" });
+  });
 });

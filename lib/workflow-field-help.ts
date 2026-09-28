@@ -62,6 +62,21 @@ const HELP_BY_KEY: Record<string, FieldHelp> = {
     explanation: "This is the information ZapFix will place inside the new file.",
     example: "Topics to review: algebra, biology, and history.",
   },
+  spreadsheet_id: {
+    question: "Which spreadsheet should receive the row?",
+    explanation: "Copy the spreadsheet ID from its Google Sheets web address.",
+    example: "The text between /d/ and /edit in the spreadsheet address",
+  },
+  sheet_name: {
+    question: "Which sheet tab should receive the row?",
+    explanation: "Enter the tab name exactly as it appears at the bottom of the spreadsheet.",
+    example: "Responses",
+  },
+  values: {
+    question: "What should each cell in the new row contain?",
+    explanation: "Enter one cell value per line. ZapFix appends those lines as one new row.",
+    example: "First line: Jordan\nSecond line: Ready\nThird line: September 27",
+  },
 };
 
 export function helpForActionField(field: ActionField): FieldHelp {

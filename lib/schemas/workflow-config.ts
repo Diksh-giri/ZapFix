@@ -49,7 +49,7 @@ export type ActionConfig = z.infer<typeof ActionConfigSchema>;
 export const TriggerFieldSchema = z.object({
   key: z.string().min(1),
   label: z.string().min(1),
-  type: z.enum(["text", "email", "date", "number"]),
+  type: z.enum(["text", "email", "date", "number", "text_list"]),
 });
 export const TriggerSchemaSchema = z.object({ fields: z.array(TriggerFieldSchema).min(1) });
 export type TriggerSchema = z.infer<typeof TriggerSchemaSchema>;

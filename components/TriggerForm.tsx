@@ -20,13 +20,23 @@ export function TriggerForm({
         {triggerSchema.fields.map((field) => (
           <label className="block text-sm font-medium" key={field.key}>
             {field.label}
-            <input
-              required
-              className="mt-1 h-9 w-full rounded-md border border-neutral-300 px-3 text-sm"
-              type={field.type === "date" ? "date" : field.type === "email" ? "email" : field.type === "number" ? "number" : "text"}
-              value={values[field.key] ?? ""}
-              onChange={(event) => setValues({ ...values, [field.key]: event.target.value })}
-            />
+            {field.type === "text_list" ? (
+              <textarea
+                required
+                className="mt-1 min-h-28 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+                placeholder="Enter one cell value per line"
+                value={values[field.key] ?? ""}
+                onChange={(event) => setValues({ ...values, [field.key]: event.target.value })}
+              />
+            ) : (
+              <input
+                required
+                className="mt-1 h-9 w-full rounded-md border border-neutral-300 px-3 text-sm"
+                type={field.type === "date" ? "date" : field.type === "email" ? "email" : field.type === "number" ? "number" : "text"}
+                value={values[field.key] ?? ""}
+                onChange={(event) => setValues({ ...values, [field.key]: event.target.value })}
+              />
+            )}
           </label>
         ))}
       </fieldset>
