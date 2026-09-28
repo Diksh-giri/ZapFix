@@ -65,9 +65,9 @@ export function FieldMapper({
 
   return (
     <fieldset className="space-y-4">
-      <legend className="text-base font-semibold">Choose what the app should use</legend>
+      <legend className="text-base font-semibold">Choose what changes each time</legend>
       <p className="text-sm text-neutral-600">
-        For each item, choose whether it changes with every run or always stays the same.
+        ZapFix can ask for new information before each run, or reuse information that stays the same.
       </p>
       {fields.map((field) => {
         const mapping = value[field.key] ?? { kind: "static" as const, value: "" };
@@ -85,7 +85,7 @@ export function FieldMapper({
                   ? { kind: "mapped", source: triggerSchema.fields[0]?.key ?? "" }
                   : { kind: "static", value: "" })}
               >
-                <option value="mapped">Use an answer from the test form</option>
+                <option value="mapped">Ask for it each time</option>
                 <option value="static">Use the same value every time</option>
               </select>
               {mapping.kind === "static" && field.type === "datetime_rfc3339" ? (
@@ -106,19 +106,19 @@ export function FieldMapper({
               ) : (
                 <select
                   className={inputClass}
-                  aria-label={`Choose the test-form answer for ${field.label}`}
+                  aria-label={`Which answer should ZapFix use for ${field.label}?`}
                   value={mapping.source}
                   onChange={(event) => set(field.key, { ...mapping, source: event.target.value })}
                 >
                   {triggerSchema.fields.map((triggerField) => (
-                    <option key={triggerField.key} value={triggerField.key}>{triggerField.label}</option>
+                    <option key={triggerField.key} value={triggerField.key}>{triggerField.label} answer</option>
                   ))}
                 </select>
               )}
             </div>
             {mapping.kind === "mapped" ? (
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <label className="text-sm text-neutral-600" htmlFor={`${field.key}-transform`}>Optional formatting</label>
+                <label className="text-sm text-neutral-600" htmlFor={`${field.key}-transform`}>How should ZapFix prepare it? (optional)</label>
                 <select
                   id={`${field.key}-transform`}
                   className={inputClass}
@@ -131,7 +131,7 @@ export function FieldMapper({
                     if (kind === "date_to_rfc3339") set(field.key, { kind: "mapped", source: mapping.source, transform: { kind: "date_to_rfc3339", fromFormat: "YYYY-MM-DD", timeZone: "UTC" } });
                   }}
                 >
-                  <option value="none">None</option>
+                  <option value="none">Use exactly as entered</option>
                   <option value="trim">Trim spaces</option>
                   <option value="lowercase">Lowercase</option>
                   <option value="date_to_rfc3339">Convert date for this app</option>
@@ -140,8 +140,8 @@ export function FieldMapper({
             ) : null}
             <p className="mt-3 text-xs text-neutral-500">
               {mapping.kind === "mapped"
-                ? `${field.label} will use the selected test-form answer each time this workflow runs.`
-                : `${field.label} will use this same value every time this workflow runs.`}
+                ? `ZapFix will ask for this information before each run.`
+                : `ZapFix will reuse this ${field.label.toLowerCase()} every time.`}
             </p>
           </div>
         );

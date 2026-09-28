@@ -20,9 +20,11 @@ describe("workflow form components", () => {
     }));
     expect(html).toContain("Where should start come from? (required)");
     expect(html).toContain("Convert date for this app");
-    expect(html).toContain("Use an answer from the test form");
+    expect(html).toContain("Ask for it each time");
     expect(html).toContain("Use the same value every time");
-    expect(html).toContain("Start will use the selected test-form answer each time this workflow runs.");
+    expect(html).toContain("Which answer should ZapFix use for Start?");
+    expect(html).toContain("Date answer");
+    expect(html).toContain("ZapFix will ask for this information before each run.");
   });
 
   it("uses human date-time and time-zone controls for a fixed datetime", () => {
