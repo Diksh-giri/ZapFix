@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { EvidenceList } from "@/components/EvidenceList";
 import { canRetryDiagnosis, manualModeTip, type ManualModeReason } from "@/lib/manual-mode";
@@ -14,13 +13,21 @@ const REASON_TEXT: Record<ManualModeReason, string> = {
   repair_limit_reached: "ZapFix has reached the repair limit for this run. Review the error and edit the workflow manually.",
 };
 
-interface ManualModeProps {
+export interface ManualModeProps {
   reason: ManualModeReason;
   diagnosis: DiagnosisView | null;
   originalError: StandardError;
-  workflowId: string;
   retrying?: boolean;
   onRetryDiagnosis?: () => void;
+  onReturnToEditor: () => void;
+}
+
+export function ReturnToEditorButton({ onReturnToEditor }: { onReturnToEditor: () => void }) {
+  return (
+    <Button variant="outline" onClick={onReturnToEditor}>
+      Return to workflow editor
+    </Button>
+  );
 }
 
 /** Fixed, rules-based help shown when ZapFix cannot safely offer a change. */
@@ -28,9 +35,9 @@ export function ManualMode({
   reason,
   diagnosis,
   originalError,
-  workflowId,
   retrying = false,
   onRetryDiagnosis,
+  onReturnToEditor,
 }: ManualModeProps) {
   const retryAllowed = canRetryDiagnosis(reason) && onRetryDiagnosis;
 
@@ -63,9 +70,7 @@ export function ManualMode({
             {retrying ? "Trying diagnosis again..." : "Try diagnosis again"}
           </Button>
         ) : null}
-        <Link className="text-sm font-medium underline underline-offset-4" href={`/workflows/${workflowId}`}>
-          Return to workflow editor
-        </Link>
+        <ReturnToEditorButton onReturnToEditor={onReturnToEditor} />
       </div>
     </section>
   );

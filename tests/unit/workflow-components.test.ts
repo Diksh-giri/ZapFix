@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { FieldMapper } from "@/components/FieldMapper";
 import { TriggerForm } from "@/components/TriggerForm";
+import { returnToWorkflowEditor } from "@/components/WorkflowEditor";
 import { isRunnableApp, triggerSchemaFor } from "@/components/WorkflowsScreen";
 
 const triggerSchema = { fields: [
@@ -11,6 +12,17 @@ const triggerSchema = { fields: [
 ] };
 
 describe("workflow form components", () => {
+  it("dismisses run details and returns focus to the editor heading", () => {
+    const setRunId = vi.fn();
+    const heading = { focus: vi.fn(), scrollIntoView: vi.fn() };
+
+    returnToWorkflowEditor(setRunId, heading);
+
+    expect(setRunId).toHaveBeenCalledWith(null);
+    expect(heading.focus).toHaveBeenCalledWith({ preventScroll: true });
+    expect(heading.scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "start" });
+  });
+
   it("renders required action fields and the closed transform list", () => {
     const html = renderToStaticMarkup(createElement(FieldMapper, {
       fields: [{ key: "start", label: "Start", required: true, type: "datetime_rfc3339" }],

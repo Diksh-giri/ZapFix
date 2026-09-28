@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
-import { ManualMode } from "@/components/ManualMode";
+import { describe, expect, it, vi } from "vitest";
+import { ManualMode, ReturnToEditorButton } from "@/components/ManualMode";
 import { canRetryDiagnosis, manualModeReason, manualModeTip, type ManualModeReason } from "@/lib/manual-mode";
 import type { DiagnosisView } from "@/lib/schemas/diagnosis";
 
@@ -83,12 +83,12 @@ describe("manual mode guidance", () => {
       reason,
       diagnosis: input,
       originalError,
-      workflowId: "workflow-1",
       onRetryDiagnosis: () => {},
+      onReturnToEditor: () => {},
     }),
   );
 
-  it("shows the original error, confirmed evidence, fixed help, and editor link", () => {
+  it("shows the original error, confirmed evidence, fixed help, and editor button", () => {
     const html = render("low_confidence");
 
     expect(html).toContain("Continue manually");
@@ -97,8 +97,17 @@ describe("manual mode guidance", () => {
     expect(html).toContain("Confirmed by the system");
     expect(html).toContain("Attendee email is empty");
     expect(html).toContain("form field feeding this setting");
-    expect(html).toContain('href="/workflows/workflow-1"');
+    expect(html).toContain(">Return to workflow editor</button>");
+    expect(html).not.toContain('href="/workflows/workflow-1"');
     expect(html).toContain("No change has been made.");
+  });
+
+  it("fires the return-to-editor callback", () => {
+    const onReturnToEditor = vi.fn();
+    const button = ReturnToEditorButton({ onReturnToEditor });
+
+    button.props.onClick();
+    expect(onReturnToEditor).toHaveBeenCalledOnce();
   });
 
   it.each(["ai_unavailable", "ai_invalid"] as const)("offers another diagnosis for %s", (reason) => {

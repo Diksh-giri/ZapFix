@@ -189,6 +189,7 @@ interface RunDiagnosisPanelProps {
   repairLimitReached: boolean;
   retrying: boolean;
   onRetryDiagnosis: () => void;
+  onReturnToEditor: () => void;
 }
 
 export function RunDiagnosisPanel({
@@ -197,6 +198,7 @@ export function RunDiagnosisPanel({
   repairLimitReached,
   retrying,
   onRetryDiagnosis,
+  onReturnToEditor,
 }: RunDiagnosisPanelProps) {
   const reason = manualModeReason(diagnosis, repairLimitReached);
   const originalError = view.attempts.find((attempt) => attempt.errorStd)?.errorStd;
@@ -207,14 +209,14 @@ export function RunDiagnosisPanel({
       reason={reason}
       diagnosis={diagnosis}
       originalError={originalError}
-      workflowId={view.run.workflowId}
       retrying={retrying}
       onRetryDiagnosis={onRetryDiagnosis}
+      onReturnToEditor={onReturnToEditor}
     />
   );
 }
 
-export function RunDetail({ runId }: { runId: string }) {
+export function RunDetail({ runId, onReturnToEditor }: { runId: string; onReturnToEditor: () => void }) {
   const [state, dispatch] = useReducer(runDetailReducer, initialRunDetailState);
   const [busy, setBusy] = useState<"diagnose" | "retry" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -346,6 +348,7 @@ export function RunDetail({ runId }: { runId: string }) {
         repairLimitReached={repairLimitReached}
         retrying={busy === "diagnose"}
         onRetryDiagnosis={() => void diagnose()}
+        onReturnToEditor={onReturnToEditor}
       />
       {state.status === "loading" ? <p className="text-sm" role="status">Checking run status...</p> : null}
       {state.status === "error" ? (

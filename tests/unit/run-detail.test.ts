@@ -260,6 +260,7 @@ describe("RunDiagnosisPanel", () => {
       repairLimitReached,
       retrying,
       onRetryDiagnosis: () => {},
+      onReturnToEditor: () => {},
     }));
 
   it.each([
