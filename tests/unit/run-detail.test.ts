@@ -7,6 +7,7 @@ import {
   initialRunDetailState,
   runActionErrorMessage,
   runDetailReducer,
+  shouldRecordFailureOpened,
   shouldPollRun,
 } from "@/lib/run-detail";
 import { loadRun, recordFailureOpened, requestDiagnosis, retryRun, RunRequestError } from "@/lib/runs-client";
@@ -73,6 +74,20 @@ describe("run action guards", () => {
     expect(runActionErrorMessage("rate_limited", "fallback")).toContain("too many requests");
     expect(runActionErrorMessage("no_active_connection", "fallback")).toContain("Reconnect");
     expect(runActionErrorMessage("unknown", "fallback")).toBe("fallback");
+  });
+
+  it("releases the action guard after a failed request", async () => {
+    const runner = createExclusiveActionRunner();
+    await expect(runner(async () => { throw new Error("request failed"); })).rejects.toThrow("request failed");
+    await expect(runner(async () => {})).resolves.toBe(true);
+  });
+
+  it("records failure-opened once per failed or uncertain run", () => {
+    const opened = new Set<string>();
+    expect(shouldRecordFailureOpened(opened, { id: "run-1", status: "running" })).toBe(false);
+    expect(shouldRecordFailureOpened(opened, { id: "run-1", status: "failed" })).toBe(true);
+    expect(shouldRecordFailureOpened(opened, { id: "run-1", status: "failed" })).toBe(false);
+    expect(shouldRecordFailureOpened(opened, { id: "run-2", status: "uncertain" })).toBe(true);
   });
 });
 
@@ -221,5 +236,15 @@ describe("loadRun", () => {
     expect(JSON.parse(String(calls[0]?.init?.body))).toEqual({ confirmUncertain: true });
     expect(calls[1]).toMatchObject({ input: "/api/runs/run-1/diagnosis", init: { method: "POST" } });
     expect(JSON.parse(String(calls[2]?.init?.body))).toEqual({ type: "failure_opened", runId: "run-1" });
+  });
+
+  it("does not send uncertain confirmation for an ordinary failed retry", async () => {
+    const calls: RequestInit[] = [];
+    const fetchRequest = async (_input: string, init?: RequestInit) => {
+      calls.push(init ?? {});
+      return Response.json(view("failed"));
+    };
+    await retryRun("run-1", false, fetchRequest);
+    expect(JSON.parse(String(calls[0]?.body))).toEqual({});
   });
 });

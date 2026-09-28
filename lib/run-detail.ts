@@ -63,3 +63,13 @@ export function runActionErrorMessage(code: string, fallback: string): string {
   };
   return messages[code] ?? fallback;
 }
+
+export function shouldRecordFailureOpened(
+  openedRunIds: Set<string>,
+  run: { id: string; status: RunView["run"]["status"] },
+): boolean {
+  if (run.status !== "failed" && run.status !== "uncertain") return false;
+  if (openedRunIds.has(run.id)) return false;
+  openedRunIds.add(run.id);
+  return true;
+}

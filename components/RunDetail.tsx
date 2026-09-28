@@ -8,6 +8,7 @@ import {
   initialRunDetailState,
   runActionErrorMessage,
   runDetailReducer,
+  shouldRecordFailureOpened,
   shouldPollRun,
 } from "@/lib/run-detail";
 import { loadRun, recordFailureOpened, requestDiagnosis, retryRun, RunRequestError } from "@/lib/runs-client";
@@ -208,8 +209,7 @@ export function RunDetail({ runId }: { runId: string }) {
   useEffect(() => {
     const view = state.view;
     if (!view) return;
-    if ((view.run.status === "failed" || view.run.status === "uncertain") && !openedRuns.current.has(view.run.id)) {
-      openedRuns.current.add(view.run.id);
+    if (shouldRecordFailureOpened(openedRuns.current, view.run)) {
       void recordFailureOpened(view.run.id).catch(() => {});
     }
   }, [state.view]);
