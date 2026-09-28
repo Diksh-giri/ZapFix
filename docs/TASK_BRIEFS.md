@@ -199,6 +199,7 @@ Owners: **D** = Dikshyant (safety core + AI client), **J** = James (experience, 
 - Invalid format: "Check the format the app expects and convert the value before sending it."
 - Expired connection: "Reconnect the app from the Connections page."
 - Unsupported: "The original error is shown above. Check the app's status page, or edit the workflow manually."
+**Status:** Done (2026-09-28), branch `j/T21-manual-mode`: typed diagnosis responses load after a new request or page refresh; all six manual-mode triggers show the sanitized original error, system-confirmed evidence, fixed category guidance and a Return to workflow editor button; AI failures alone offer a guarded diagnosis retry; and repair-limit errors become a manual handoff. Returning clears the selected run, hides the run-detail panel and moves focus to the editor heading. Native buttons preserve keyboard behavior, labelled sections provide screen-reader structure, and tests confirm no proposal or approval controls render in manual mode. `npm run check` and `npm run eval` pass; a webpack production build and `npm start` smoke check pass. The default Turbopack build remains unverified in this execution environment because its helper process cannot bind a local port. T19's diagnosis explanation, proposal and approval experience remains separate work.
 **Acceptance:** each manual-mode trigger shows the right message; no fix is ever offered here.
 
 ---
