@@ -1,6 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
-import { approvals, configChanges, diagnoses, proposals, stepAttempts, workflows } from "@/db/schema";
+import { approvals, configChanges, diagnoses, proposals, runs, stepAttempts, workflows } from "@/db/schema";
 import type * as schema from "@/db/schema";
 import { AppError } from "@/lib/errors";
 import { AiOutputSchema } from "@/lib/schemas/ai-output";
@@ -9,6 +9,7 @@ import { ActionConfigSchema, type FieldMapping } from "@/lib/schemas/workflow-co
 import type { Confidence, ProposalKind } from "@/lib/types";
 import { createDrizzleAuditStore } from "@/server/audit/drizzle-store";
 import type { Candidate, Evidence } from "@/server/diagnosis/rules/types";
+import { assertCanDiagnose } from "@/server/runs/engine";
 import type { ChangeContext, ProposalContext, ProposalStore, ProposalTx } from "./store";
 import type { DiagnosisInput, ProposalDraft, ProposalRecord, ProposalStatus } from "./types";
 
@@ -196,8 +197,36 @@ export function createDrizzleProposalStore(db: Database): ProposalStore {
       return ctx && ctx.workflow.userId === userId ? ctx : undefined;
     },
 
-    async replacePending(workflowId, draft: ProposalDraft | null) {
+    async replacePending(workflowId, diagnosisId, draft: ProposalDraft | null) {
       return db.transaction(async (trx) => {
+        const [origin] = await trx
+          .select({ runId: runs.id, attemptId: stepAttempts.id, repairCount: runs.repairCount })
+          .from(diagnoses)
+          .innerJoin(stepAttempts, eq(stepAttempts.id, diagnoses.attemptId))
+          .innerJoin(runs, eq(runs.id, stepAttempts.runId))
+          .where(
+            and(
+              eq(diagnoses.id, diagnosisId),
+              eq(runs.workflowId, workflowId),
+              eq(runs.status, "failed"),
+              eq(stepAttempts.status, "failed"),
+            ),
+          )
+          .for("update", { of: runs })
+          .limit(1);
+        if (!origin) throw new AppError("conflict", "This run changed before its proposal was prepared. Try diagnosis again.");
+        assertCanDiagnose(origin.repairCount);
+
+        const [latest] = await trx
+          .select({ id: stepAttempts.id })
+          .from(stepAttempts)
+          .where(eq(stepAttempts.runId, origin.runId))
+          .orderBy(desc(stepAttempts.attemptNo))
+          .limit(1);
+        if (latest?.id !== origin.attemptId) {
+          throw new AppError("conflict", "This run changed before its proposal was prepared. Try diagnosis again.");
+        }
+
         await trx
           .update(proposals)
           .set({ status: "superseded" })

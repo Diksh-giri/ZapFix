@@ -12,5 +12,5 @@ export async function createProposal(
   input: { diagnosis: DiagnosisInput; workflowId: string; config: ActionConfig; configVersion: number },
 ): Promise<ProposalRecord | null> {
   const draft = planProposal(input);
-  return deps.store.replacePending(input.workflowId, draft);
+  return deps.store.replacePending(input.workflowId, input.diagnosis.id, draft);
 }

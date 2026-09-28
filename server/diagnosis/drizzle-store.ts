@@ -7,6 +7,7 @@ import { AiOutputSchema } from "@/lib/schemas/ai-output";
 import { StandardErrorSchema } from "@/lib/schemas/standard-error";
 import { ActionConfigSchema, TriggerDataSchema, TriggerSchemaSchema } from "@/lib/schemas/workflow-config";
 import type { AppId, AttemptStatus, Confidence } from "@/lib/types";
+import { assertCanDiagnose } from "@/server/runs/engine";
 import type { Candidate, Evidence } from "./rules/types";
 import type { DiagnosisContext, DiagnosisRecord, DiagnosisStore } from "./store";
 
@@ -88,7 +89,7 @@ export function createDrizzleDiagnosisStore(db: Database): DiagnosisStore {
     async insert(userId, input) {
       return db.transaction(async (tx) => {
         const [owned] = await tx
-          .select({ attemptId: stepAttempts.id })
+          .select({ attemptId: stepAttempts.id, runId: runs.id, repairCount: runs.repairCount })
           .from(stepAttempts)
           .innerJoin(runs, eq(runs.id, stepAttempts.runId))
           .innerJoin(workflows, eq(workflows.id, runs.workflowId))
@@ -101,9 +102,20 @@ export function createDrizzleDiagnosisStore(db: Database): DiagnosisStore {
               eq(workflows.userId, userId),
             ),
           )
-          .for("update")
+          .for("update", { of: runs })
           .limit(1);
         if (!owned) throw new AppError("not_found", "That failed attempt was not found.");
+        assertCanDiagnose(owned.repairCount);
+
+        const [latest] = await tx
+          .select({ id: stepAttempts.id })
+          .from(stepAttempts)
+          .where(eq(stepAttempts.runId, owned.runId))
+          .orderBy(desc(stepAttempts.attemptNo))
+          .limit(1);
+        if (latest?.id !== owned.attemptId) {
+          throw new AppError("conflict", "This run changed while its diagnosis was being prepared. Try diagnosis again.");
+        }
 
         const [row] = await tx
           .insert(diagnoses)

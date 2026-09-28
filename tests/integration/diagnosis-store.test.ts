@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { runs, stepAttempts, workflows } from "@/db/schema";
 import type { ActionConfig } from "@/lib/schemas/workflow-config";
@@ -191,5 +192,61 @@ describe.skipIf(!scratchEnabled)("diagnosis persistence on a real database (scra
     };
 
     await expect(store.insert(USER, input)).rejects.toMatchObject({ code: "not_found" });
+  });
+
+  it("refuses to save after the repair limit is reached while diagnosis is being prepared", async () => {
+    const store = createDrizzleDiagnosisStore(db!);
+    const context = await store.getContext(RUN, USER);
+    await db!.update(runs).set({ repairCount: 2 }).where(eq(runs.id, RUN));
+
+    await expect(
+      store.insert(USER, {
+        attemptId: context!.attempt.id,
+        category: "invalid_format",
+        supported: true,
+        evidence: [],
+        candidates: [],
+        ceiling: "low",
+        aiStatus: "unavailable",
+        ai: null,
+        confidence: null,
+        model: null,
+      }),
+    ).rejects.toMatchObject({ code: "repair_limit_reached" });
+  });
+
+  it("refuses to save when a newer attempt finishes while diagnosis is being prepared", async () => {
+    const store = createDrizzleDiagnosisStore(db!);
+    const context = await store.getContext(RUN, USER);
+    await db!.insert(stepAttempts).values({
+      runId: RUN,
+      attemptNo: 3,
+      status: "failed",
+      configSnapshot: failedConfig,
+      idempotencyKey: `${RUN}:action:3`,
+      errorStd: {
+        category_hint: "invalid_value",
+        code: "newer_failure",
+        message: "A newer attempt failed.",
+        field: "start",
+        retryable: false,
+        outcome: "not_executed",
+      },
+    });
+
+    await expect(
+      store.insert(USER, {
+        attemptId: context!.attempt.id,
+        category: "invalid_format",
+        supported: true,
+        evidence: [],
+        candidates: [],
+        ceiling: "low",
+        aiStatus: "unavailable",
+        ai: null,
+        confidence: null,
+        model: null,
+      }),
+    ).rejects.toMatchObject({ code: "conflict" });
   });
 });
