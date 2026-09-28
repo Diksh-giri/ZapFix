@@ -1,0 +1,30 @@
+{
+  "scenario": "invalid_token",
+  "description": "An expired or invalid access token.",
+  "recorded_at": "2026-09-27",
+  "request_shape": {
+    "spreadsheet_id": "provided",
+    "sheet_name": "provided",
+    "values": "provided"
+  },
+  "response": {
+    "status": 401,
+    "body": {
+      "error": {
+        "code": 401,
+        "message": "Request had invalid authentication credentials. Expected OAuth 2 access token, login cookie or other valid authentication credential. See https://developers.google.com/identity/sign-in/web/devconsole-project.",
+        "status": "UNAUTHENTICATED"
+      }
+    }
+  },
+  "mapped": {
+    "ok": false,
+    "error": {
+      "code": "http_401",
+      "message": "Request had invalid authentication credentials. Expected OAuth 2 access token, login cookie or other valid authentication credential. See https://developers.google.com/identity/sign-in/web/devconsole-project.",
+      "retryable": false,
+      "outcome": "not_executed",
+      "category_hint": "auth"
+    }
+  }
+}

@@ -17,6 +17,12 @@ const DEFAULT_TRIGGER: TriggerSchema = {
     { key: "date", label: "Date", type: "date" },
   ],
 };
+const SHEETS_TRIGGER: TriggerSchema = {
+  fields: [
+    ...DEFAULT_TRIGGER.fields,
+    { key: "row_values", label: "Row values", type: "text_list" },
+  ],
+};
 const inputClass = "h-9 w-full rounded-md border border-neutral-300 bg-white px-3 text-sm";
 
 function emptyConfig(fields: Array<{ key: string }>): ActionConfig {
@@ -24,7 +30,11 @@ function emptyConfig(fields: Array<{ key: string }>): ActionConfig {
 }
 
 export function isRunnableApp(app: AppCatalogItem): boolean {
-  return app.id !== "google_sheets";
+  return app.actions.length > 0;
+}
+
+export function triggerSchemaFor(appId: AppCatalogItem["id"]): TriggerSchema {
+  return appId === "google_sheets" ? SHEETS_TRIGGER : DEFAULT_TRIGGER;
 }
 
 export function WorkflowsScreen() {
@@ -88,7 +98,7 @@ export function WorkflowsScreen() {
     try {
       const created = await createWorkflow({
         name, app: app.id, actionKey: action.key, connectionId,
-        triggerSchema: DEFAULT_TRIGGER, actionConfig,
+        triggerSchema: triggerSchemaFor(app.id), actionConfig,
       });
       router.push(`/workflows/${created.id}`);
     } catch (error) {
@@ -110,7 +120,7 @@ export function WorkflowsScreen() {
       </header>
 
       <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-        Actions run on your real connected accounts. Use a test calendar, channel, inbox, or drive.
+        Actions run on your real connected accounts. Use a test calendar, channel, inbox, drive, or spreadsheet.
       </p>
 
       {showCreate ? (
@@ -147,7 +157,7 @@ export function WorkflowsScreen() {
               {compatibleConnections.length === 0 ? <span className="mt-1 block text-sm text-red-700">No active connection. Connect this app first.</span> : null}
             </label>
           ) : null}
-          {action ? <FieldMapper fields={action.fields} triggerSchema={DEFAULT_TRIGGER} value={actionConfig} onChange={setActionConfig} /> : null}
+          {action && app ? <FieldMapper fields={action.fields} triggerSchema={triggerSchemaFor(app.id)} value={actionConfig} onChange={setActionConfig} /> : null}
           {submitError ? <p role="alert" className="text-sm text-red-700">{submitError}</p> : null}
           <Button disabled={saving || !action} type="submit">{saving ? "Saving..." : "Save workflow"}</Button>
         </form>
