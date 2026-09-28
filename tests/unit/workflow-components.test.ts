@@ -23,6 +23,21 @@ describe("workflow form components", () => {
     expect(html).toContain("Fixed value");
   });
 
+  it("uses human date-time and time-zone controls for a fixed datetime", () => {
+    const html = renderToStaticMarkup(createElement(FieldMapper, {
+      fields: [{ key: "start", label: "Start", required: true, type: "datetime_rfc3339" }],
+      triggerSchema,
+      value: { start: { kind: "static", value: "2026-10-01T18:30:00Z", timeZone: "America/New_York" } },
+      onChange: vi.fn(),
+    }));
+    expect(html).toContain('type="datetime-local"');
+    expect(html).toContain("Start time zone");
+    expect(html).toContain('value="2026-10-01T14:30"');
+    expect(html).toContain('value="America/New_York" selected=""');
+    expect(html).toContain("converts this to the app&#x27;s required date format automatically");
+    expect(html).not.toContain("Start fixed value");
+  });
+
   it("renders one correctly typed input per trigger field", () => {
     const html = renderToStaticMarkup(createElement(TriggerForm, {
       triggerSchema, onRun: vi.fn(),

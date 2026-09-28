@@ -2,8 +2,54 @@
 
 import type { ActionField } from "@/lib/schemas/workflows";
 import type { ActionConfig, FieldMapping, TriggerSchema } from "@/lib/schemas/workflow-config";
+import { localDateTimeToRfc3339, rfc3339ToLocalDateTime } from "@/lib/local-datetime";
 
 const inputClass = "h-9 w-full rounded-md border border-neutral-300 bg-white px-3 text-sm";
+const TIME_ZONES = [
+  "UTC", "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles",
+  "Europe/London", "Europe/Paris", "Asia/Kolkata", "Asia/Tokyo", "Australia/Sydney",
+];
+
+function DateTimeStaticInput({
+  field, value, timeZone, onChange,
+}: {
+  field: ActionField;
+  value: string;
+  timeZone: string;
+  onChange: (value: string, timeZone: string) => void;
+}) {
+  const localValue = rfc3339ToLocalDateTime(value, timeZone);
+  return (
+    <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
+      <label className="text-sm text-neutral-600">
+        {field.label} date and time
+        <input
+          className={`mt-1 ${inputClass}`}
+          type="datetime-local"
+          aria-label={`${field.label} date and time`}
+          value={localValue}
+          onChange={(event) => onChange(localDateTimeToRfc3339(event.target.value, timeZone) ?? "", timeZone)}
+        />
+      </label>
+      <label className="text-sm text-neutral-600">
+        Time zone
+        <select
+          className={`mt-1 ${inputClass}`}
+          aria-label={`${field.label} time zone`}
+          value={timeZone}
+          onChange={(event) => {
+            const nextZone = event.target.value;
+            const sameWallClockTime = localValue;
+            onChange(localDateTimeToRfc3339(sameWallClockTime, nextZone) ?? "", nextZone);
+          }}
+        >
+          {TIME_ZONES.map((zone) => <option key={zone} value={zone}>{zone.replaceAll("_", " ")}</option>)}
+        </select>
+      </label>
+      <p className="text-xs text-neutral-500 sm:col-span-2">ZapFix converts this to the app&apos;s required date format automatically.</p>
+    </div>
+  );
+}
 
 export function FieldMapper({
   fields, triggerSchema, value, onChange,
@@ -40,7 +86,14 @@ export function FieldMapper({
                 <option value="mapped">Form field</option>
                 <option value="static">Fixed value</option>
               </select>
-              {mapping.kind === "static" ? (
+              {mapping.kind === "static" && field.type === "datetime_rfc3339" ? (
+                <DateTimeStaticInput
+                  field={field}
+                  value={mapping.value}
+                  timeZone={mapping.timeZone ?? "UTC"}
+                  onChange={(nextValue, timeZone) => set(field.key, { kind: "static", value: nextValue, timeZone })}
+                />
+              ) : mapping.kind === "static" ? (
                 <input
                   className={inputClass}
                   aria-label={`${field.label} fixed value`}
