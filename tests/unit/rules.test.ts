@@ -53,19 +53,51 @@ describe("missing required field rule (worked example, T13)", () => {
 });
 
 describe("invalid format rule", () => {
-  it("classifies an ambiguous slash date and offers only the two allowed date transforms", async () => {
+  it("offers only the calendar-valid interpretation of an unambiguous slash date", async () => {
     const input = await inputFor(
       { name: "Kickoff", email: "ana@example.com", meeting_date: "03/15/2026" },
       { ...config, start: { kind: "mapped", source: "meeting_date" } },
     );
     const c = classify(input);
     expect(c.category).toBe("invalid_format");
+    expect(c.candidates.map((candidate) => candidate.id)).toEqual(["transform:start:MM/DD/YYYY"]);
+    expect(c.candidates.every((candidate) => candidate.fieldPath === "actionConfig.start")).toBe(true);
+    expect(c.ceiling).toBe("high");
+  });
+
+  it("offers both interpretations only when both are valid calendar dates", async () => {
+    const input = await inputFor(
+      { name: "Kickoff", email: "ana@example.com", meeting_date: "03/04/2026" },
+      { ...config, start: { kind: "mapped", source: "meeting_date" } },
+    );
+    const c = classify(input);
     expect(c.candidates.map((candidate) => candidate.id)).toEqual([
       "transform:start:MM/DD/YYYY",
       "transform:start:DD/MM/YYYY",
     ]);
-    expect(c.candidates.every((candidate) => candidate.fieldPath === "actionConfig.start")).toBe(true);
     expect(c.ceiling).toBe("medium");
+  });
+
+  it("offers no transform for an impossible calendar date", async () => {
+    const input = await inputFor(
+      { name: "Kickoff", email: "ana@example.com", meeting_date: "02/31/2026" },
+      { ...config, start: { kind: "mapped", source: "meeting_date" } },
+    );
+    const c = classify(input);
+    expect(c.category).toBe("invalid_format");
+    expect(c.candidates).toEqual([]);
+    expect(c.ceiling).toBe("low");
+  });
+
+  it("offers no transform for an impossible ISO-style calendar date", async () => {
+    const input = await inputFor(
+      { name: "Kickoff", email: "ana@example.com", meeting_date: "2026-02-31" },
+      { ...config, start: { kind: "mapped", source: "meeting_date" } },
+    );
+    const c = classify(input);
+    expect(c.category).toBe("invalid_format");
+    expect(c.candidates).toEqual([]);
+    expect(c.ceiling).toBe("low");
   });
 
   it("does not propose a format transform for an empty value", async () => {
@@ -115,6 +147,16 @@ describe("invalid format rule", () => {
     expect(c.category).toBe("unsupported");
     expect(c.candidates).toEqual([]);
     expect(c.ceiling).toBe("low");
+  });
+
+  it("masks values echoed by an app before adding them to evidence", async () => {
+    const input = await inputFor(
+      { name: "Kickoff", email: "ana@example.com", meeting_date: "03/15/2026" },
+      { ...config, start: { kind: "mapped", source: "meeting_date" } },
+    );
+    input.error = { ...input.error, message: 'The value "03/15/2026" for ana@example.com is invalid.' };
+    const c = classify(input);
+    expect(c.evidence[0]?.value).toBe('invalid_datetime: The value "[value]" for [email] is invalid.');
   });
 
 });

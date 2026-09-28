@@ -47,9 +47,9 @@ export interface DiagnosisRecord extends NewDiagnosis {
   createdAt: Date;
 }
 
-/** Persistence boundary for T13. Every read includes ownership because the server connection bypasses RLS. */
+/** Persistence boundary for T13. Every operation includes ownership because the server connection bypasses RLS. */
 export interface DiagnosisStore {
   getContext(runId: string, userId: string): Promise<DiagnosisContext | undefined>;
-  insert(input: NewDiagnosis): Promise<DiagnosisRecord>;
+  insert(userId: string, input: NewDiagnosis): Promise<DiagnosisRecord>;
   get(id: string, userId: string): Promise<DiagnosisRecord | undefined>;
 }

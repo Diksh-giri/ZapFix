@@ -66,7 +66,7 @@ describe("real Google errors reach the right rule", () => {
     expect(c.ceiling).toBe("high");
   });
 
-  it("bad date: offers both interpretations of an ambiguous slash date", () => {
+  it("bad date: offers only the valid interpretation of the recorded date", () => {
     const c = diagnose("invalid_date_format", {
       title: "T",
       start: "03/15/2026",
@@ -74,10 +74,7 @@ describe("real Google errors reach the right rule", () => {
       email: "a@example.com",
     });
     expect(c.category).toBe("invalid_format");
-    expect(c.candidates.map((candidate) => candidate.id)).toEqual([
-      "transform:start:MM/DD/YYYY",
-      "transform:start:DD/MM/YYYY",
-    ]);
-    expect(c.ceiling).toBe("medium");
+    expect(c.candidates.map((candidate) => candidate.id)).toEqual(["transform:start:MM/DD/YYYY"]);
+    expect(c.ceiling).toBe("high");
   });
 });

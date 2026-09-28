@@ -8,6 +8,9 @@ const WORKFLOW = "10000000-0000-4000-8000-000000000031";
 const RUN = "20000000-0000-4000-8000-000000000031";
 const FIRST_ATTEMPT = "30000000-0000-4000-8000-000000000031";
 const LATEST_ATTEMPT = "30000000-0000-4000-8000-000000000032";
+const OTHER_WORKFLOW = "10000000-0000-4000-8000-000000000032";
+const MISMATCHED_RUN = "20000000-0000-4000-8000-000000000032";
+const MISMATCHED_ATTEMPT = "30000000-0000-4000-8000-000000000033";
 
 const failedConfig: ActionConfig = {
   start: { kind: "mapped", source: "date" },
@@ -35,6 +38,16 @@ async function seed() {
     triggerSchema: { fields: [{ key: "date", label: "Date", type: "date" }] },
     actionConfig: currentConfig,
     configVersion: 2,
+  });
+  await db!.insert(workflows).values({
+    id: OTHER_WORKFLOW,
+    userId: OTHER_USER,
+    name: "Other user's workflow",
+    app: "google_calendar",
+    actionKey: "create_event",
+    triggerSchema: { fields: [{ key: "date", label: "Date", type: "date" }] },
+    actionConfig: currentConfig,
+    configVersion: 1,
   });
   await db!.insert(runs).values({
     id: RUN,
@@ -76,6 +89,29 @@ async function seed() {
       },
     },
   ]);
+  await db!.insert(runs).values({
+    id: MISMATCHED_RUN,
+    workflowId: OTHER_WORKFLOW,
+    userId: USER,
+    triggerData: { date: "03/15/2026" },
+    status: "failed",
+  });
+  await db!.insert(stepAttempts).values({
+    id: MISMATCHED_ATTEMPT,
+    runId: MISMATCHED_RUN,
+    attemptNo: 1,
+    status: "failed",
+    configSnapshot: failedConfig,
+    idempotencyKey: `${MISMATCHED_RUN}:action:1`,
+    errorStd: {
+      category_hint: "invalid_value",
+      code: "badRequest",
+      message: "Bad Request",
+      field: "start",
+      retryable: false,
+      outcome: "not_executed",
+    },
+  });
 }
 
 describe.skipIf(!scratchEnabled)("diagnosis persistence on a real database (scratch only)", () => {
@@ -91,11 +127,24 @@ describe.skipIf(!scratchEnabled)("diagnosis persistence on a real database (scra
     expect(context?.workflow.configVersion).toBe(2);
     expect(context?.attempt.error).toMatchObject({ category_hint: "invalid_value", field: "start" });
     expect(await store.getContext(RUN, OTHER_USER)).toBeUndefined();
+    expect(await store.getContext(MISMATCHED_RUN, USER)).toBeUndefined();
+  });
+
+  it("refuses to diagnose when the newest attempt did not fail", async () => {
+    await db!.insert(stepAttempts).values({
+      runId: RUN,
+      attemptNo: 3,
+      status: "succeeded",
+      configSnapshot: failedConfig,
+      idempotencyKey: `${RUN}:action:3`,
+    });
+    const store = createDrizzleDiagnosisStore(db!);
+    await expect(store.getContext(RUN, USER)).resolves.toBeUndefined();
   });
 
   it("saves a diagnosis and only returns it to the run owner", async () => {
     const store = createDrizzleDiagnosisStore(db!);
-    const saved = await store.insert({
+    const saved = await store.insert(USER, {
       attemptId: LATEST_ATTEMPT,
       category: "invalid_format",
       supported: true,
@@ -122,5 +171,23 @@ describe.skipIf(!scratchEnabled)("diagnosis persistence on a real database (scra
 
     await expect(store.get(saved.id, USER)).resolves.toEqual(saved);
     await expect(store.get(saved.id, OTHER_USER)).resolves.toBeUndefined();
+  });
+
+  it("refuses to save a diagnosis for another user's attempt", async () => {
+    const store = createDrizzleDiagnosisStore(db!);
+    const input = {
+      attemptId: MISMATCHED_ATTEMPT,
+      category: "invalid_format" as const,
+      supported: true,
+      evidence: [{ label: "Failing field", value: "Start" }],
+      candidates: [],
+      ceiling: "low" as const,
+      aiStatus: "unavailable" as const,
+      ai: null,
+      confidence: null,
+      model: null,
+    };
+
+    await expect(store.insert(USER, input)).rejects.toMatchObject({ code: "not_found" });
   });
 });

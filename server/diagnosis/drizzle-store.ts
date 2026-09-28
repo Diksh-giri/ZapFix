@@ -77,30 +77,51 @@ export function createDrizzleDiagnosisStore(db: Database): DiagnosisStore {
         .from(runs)
         .innerJoin(stepAttempts, eq(stepAttempts.runId, runs.id))
         .innerJoin(workflows, eq(workflows.id, runs.workflowId))
-        .where(and(eq(runs.id, runId), eq(runs.userId, userId)))
+        .where(and(eq(runs.id, runId), eq(runs.userId, userId), eq(workflows.userId, userId)))
         .orderBy(desc(stepAttempts.attemptNo))
         .limit(1);
-      return row ? asContext(row) : undefined;
+      if (!row || row.run.status !== "failed" || row.attempt.status !== "failed") return undefined;
+      return asContext(row);
     },
 
-    async insert(input) {
-      const [row] = await db
-        .insert(diagnoses)
-        .values({
-          attemptId: input.attemptId,
-          category: input.category,
-          supported: input.supported,
-          ruleEvidence: input.evidence,
-          candidates: input.candidates,
-          confidenceCeiling: input.ceiling,
-          aiStatus: input.aiStatus,
-          aiOutput: input.ai,
-          confidence: input.confidence,
-          model: input.model,
-        })
-        .returning();
-      if (!row) throw new Error("The diagnosis could not be saved.");
-      return asDiagnosis(row);
+    async insert(userId, input) {
+      return db.transaction(async (tx) => {
+        const [owned] = await tx
+          .select({ attemptId: stepAttempts.id })
+          .from(stepAttempts)
+          .innerJoin(runs, eq(runs.id, stepAttempts.runId))
+          .innerJoin(workflows, eq(workflows.id, runs.workflowId))
+          .where(
+            and(
+              eq(stepAttempts.id, input.attemptId),
+              eq(stepAttempts.status, "failed"),
+              eq(runs.status, "failed"),
+              eq(runs.userId, userId),
+              eq(workflows.userId, userId),
+            ),
+          )
+          .for("update")
+          .limit(1);
+        if (!owned) throw new AppError("not_found", "That failed attempt was not found.");
+
+        const [row] = await tx
+          .insert(diagnoses)
+          .values({
+            attemptId: owned.attemptId,
+            category: input.category,
+            supported: input.supported,
+            ruleEvidence: input.evidence,
+            candidates: input.candidates,
+            confidenceCeiling: input.ceiling,
+            aiStatus: input.aiStatus,
+            aiOutput: input.ai,
+            confidence: input.confidence,
+            model: input.model,
+          })
+          .returning();
+        if (!row) throw new Error("The diagnosis could not be saved.");
+        return asDiagnosis(row);
+      });
     },
 
     async get(id, userId) {

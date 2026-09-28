@@ -1,3 +1,4 @@
+import { maskQuotedValues } from "@/server/diagnosis/ai/payload";
 import type { Evidence, RuleInput, RuleMatch } from "./types";
 
 /**
@@ -11,7 +12,7 @@ export function matchExpiredConnection(input: RuleInput): RuleMatch | null {
   if (error.category_hint !== "auth") return null;
 
   const evidence: Evidence[] = [
-    { label: "App error", value: `${error.code}: ${error.message}` },
+    { label: "App error", value: `${error.code}: ${maskQuotedValues(error.message)}` },
     { label: "Connection status", value: "Authentication failed" },
   ];
 

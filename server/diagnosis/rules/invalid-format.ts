@@ -1,5 +1,5 @@
 import type { Transform } from "@/lib/schemas/workflow-config";
-import { shapeOf, type ValueShape } from "@/server/diagnosis/ai/payload";
+import { maskQuotedValues, shapeOf, type ValueShape } from "@/server/diagnosis/ai/payload";
 import type { Candidate, Evidence, RuleInput, RuleMatch } from "./types";
 
 /**
@@ -15,6 +15,23 @@ const DATE_FORMATS_FOR: Partial<Record<ValueShape, Array<Extract<Transform, { ki
   "date YYYY-MM-DD": ["YYYY-MM-DD"],
 };
 
+function isValidDate(value: string, format: Extract<Transform, { kind: "date_to_rfc3339" }>["fromFormat"]): boolean {
+  const parts = value.split(format === "YYYY-MM-DD" ? "-" : "/").map(Number);
+  if (parts.length !== 3 || parts.some((part) => !Number.isInteger(part))) return false;
+  const [first, second, year] = parts;
+  if (first === undefined || second === undefined || year === undefined) return false;
+  const normalized =
+    format === "YYYY-MM-DD"
+      ? { year: first, month: second, day: year }
+      : { year, month: format === "MM/DD/YYYY" ? first : second, day: format === "MM/DD/YYYY" ? second : first };
+  const date = new Date(Date.UTC(normalized.year, normalized.month - 1, normalized.day));
+  return (
+    date.getUTCFullYear() === normalized.year &&
+    date.getUTCMonth() === normalized.month - 1 &&
+    date.getUTCDate() === normalized.day
+  );
+}
+
 export function matchInvalidFormat(input: RuleInput): RuleMatch | null {
   const { error, config, resolved, actionFields } = input;
   if (error.category_hint !== "invalid_value" || !error.field) return null;
@@ -25,7 +42,10 @@ export function matchInvalidFormat(input: RuleInput): RuleMatch | null {
   if (!actionField || !mapping) return null;
 
   const valueShape = shapeOf(resolved[fieldKey] ?? "");
-  const formats = actionField.type === "datetime_rfc3339" ? (DATE_FORMATS_FOR[valueShape] ?? []) : [];
+  const formats =
+    actionField.type === "datetime_rfc3339"
+      ? (DATE_FORMATS_FOR[valueShape] ?? []).filter((format) => isValidDate(resolved[fieldKey] ?? "", format))
+      : [];
   const candidates: Candidate[] =
     mapping.kind === "mapped" && valueShape !== "empty"
       ? formats.map((fromFormat) => ({
@@ -42,7 +62,7 @@ export function matchInvalidFormat(input: RuleInput): RuleMatch | null {
       : [];
 
   const evidence: Evidence[] = [
-    { label: "App error", value: `${error.code}: ${error.message}` },
+    { label: "App error", value: `${error.code}: ${maskQuotedValues(error.message)}` },
     { label: "Failing field", value: actionField.label },
     { label: "Value format", value: valueShape },
     { label: "Expected format", value: actionField.type },
