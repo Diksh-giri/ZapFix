@@ -223,7 +223,8 @@ export function RunDetail({ runId }: { runId: string }) {
   const diagnose = () => actionRunner.current(async () => {
     setBusy("diagnose"); setActionError(null);
     try {
-      setDiagnosisId(await requestDiagnosis(runId));
+      const result = await requestDiagnosis(runId);
+      setDiagnosisId(result.diagnosis.id);
     } catch (caught) {
       setActionError(explainActionError(caught, "The diagnosis could not be started."));
     } finally {

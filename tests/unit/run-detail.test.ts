@@ -221,15 +221,20 @@ describe("loadRun", () => {
 
   it("sends only approved retry, diagnosis, and event fields", async () => {
     const calls: Array<{ input: string; init?: RequestInit }> = [];
+    const diagnosis = {
+      id: "diagnosis-1", attemptId: "attempt-1", category: "unsupported", supported: false,
+      evidence: [], candidates: [], ceiling: "low", aiStatus: "unavailable", ai: null,
+      confidence: null, model: null, createdAt: "2026-09-28T12:00:00.000Z",
+    };
     const fetchRequest = async (input: string, init?: RequestInit) => {
       calls.push({ input, init });
       if (input.endsWith("/retry")) return Response.json(view("failed"));
-      if (input.endsWith("/diagnosis")) return Response.json({ diagnosis: { id: "diagnosis-1" }, proposal: null });
+      if (input.endsWith("/diagnosis")) return Response.json({ diagnosis, proposal: null });
       return new Response(null, { status: 204 });
     };
 
     await retryRun("run-1", true, fetchRequest);
-    await expect(requestDiagnosis("run-1", fetchRequest)).resolves.toBe("diagnosis-1");
+    await expect(requestDiagnosis("run-1", fetchRequest)).resolves.toEqual({ diagnosis, proposal: null });
     await recordFailureOpened("run-1", fetchRequest);
 
     expect(calls[0]).toMatchObject({ input: "/api/runs/run-1/retry", init: { method: "POST" } });

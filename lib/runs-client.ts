@@ -1,4 +1,5 @@
 import { RunViewSchema, type RunView } from "@/lib/schemas/runs";
+import { DiagnosisViewSchema, type DiagnosisView } from "@/lib/schemas/diagnosis";
 import { z } from "zod";
 
 export type FetchRunRequest = (input: string, init?: RequestInit) => Promise<Response>;
@@ -46,16 +47,25 @@ export async function retryRun(
 }
 
 const DiagnosisStartSchema = z.object({
-  diagnosis: z.object({ id: z.string() }),
+  diagnosis: DiagnosisViewSchema,
   proposal: z.unknown().nullable(),
 });
+export type DiagnosisStart = z.infer<typeof DiagnosisStartSchema>;
 
-export async function requestDiagnosis(id: string, fetchRequest: FetchRunRequest = fetch): Promise<string> {
+export async function requestDiagnosis(id: string, fetchRequest: FetchRunRequest = fetch): Promise<DiagnosisStart> {
   const parsed = DiagnosisStartSchema.safeParse(await json(await fetchRequest(`/api/runs/${id}/diagnosis`, {
     method: "POST",
   })));
   if (!parsed.success) throw new RunRequestError("invalid_response", "ZapFix returned invalid diagnosis data.");
-  return parsed.data.diagnosis.id;
+  return parsed.data;
+}
+
+export async function loadDiagnosis(id: string, fetchRequest: FetchRunRequest = fetch): Promise<DiagnosisView> {
+  const parsed = DiagnosisViewSchema.safeParse(await json(await fetchRequest(`/api/diagnoses/${id}`, {
+    headers: { accept: "application/json" },
+  })));
+  if (!parsed.success) throw new RunRequestError("invalid_response", "ZapFix returned invalid diagnosis data.");
+  return parsed.data;
 }
 
 export async function recordFailureOpened(id: string, fetchRequest: FetchRunRequest = fetch): Promise<void> {
