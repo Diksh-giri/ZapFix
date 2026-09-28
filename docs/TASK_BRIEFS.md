@@ -168,6 +168,7 @@ Owners: **D** = Dikshyant (safety core + AI client), **J** = James (experience, 
 
 ### T17. Workflow editor, field mapper, trigger form (J, M)
 **Depends on:** T10. **Start here:** `components/FieldMapper.tsx`, `components/TriggerForm.tsx` (stubs), `app/workflows/page.tsx`, `app/workflows/[id]/page.tsx`.
+**Status:** Code complete and tested (2026-09-27): workflow loading, empty/error states, create/edit flows, compatible active-connection selection, required action-field mapping, closed-list transforms, built-in trigger form, version-conflict recovery, real-action warning and Run test wiring. `npm run check` and `npm run build` pass. Still to verify manually with a signed-in test account against a real connected app.
 **Build:** workflow list with empty state; create flow: name, app, action (from `GET /api/apps`), connection; **field mapper**: each action field maps to a trigger field, a fixed value, or a trigger field plus a transform (closed list); required fields marked; **trigger form** built from `trigger_schema` (text, email, date, number) with a **Run test** button that posts `triggerData`. Edits use `PATCH` with `expectedConfigVersion` and handle the 409.
 **Acceptance:** build, save, edit, and run a workflow end to end against the fake adapter, then the real one.
 
