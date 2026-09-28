@@ -133,6 +133,14 @@ export function FieldMapper({
                   timeZone={mapping.timeZone ?? "UTC"}
                   onChange={(nextValue, timeZone) => set(field.key, { kind: "static", value: nextValue, timeZone })}
                 />
+              ) : mapping.kind === "static" && field.type === "text_list" ? (
+                <textarea
+                  className="min-h-28 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
+                  aria-label={`${field.label} value used every time`}
+                  placeholder="Enter one cell value per line"
+                  value={mapping.value}
+                  onChange={(event) => set(field.key, { kind: "static", value: event.target.value })}
+                />
               ) : mapping.kind === "static" ? (
                 <input
                   className={inputClass}
