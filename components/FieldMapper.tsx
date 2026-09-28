@@ -131,7 +131,7 @@ export function FieldMapper({
                   <option value="none">None</option>
                   <option value="trim">Trim spaces</option>
                   <option value="lowercase">Lowercase</option>
-                  <option value="date_to_rfc3339">Date to RFC 3339</option>
+                  <option value="date_to_rfc3339">Convert date for this app</option>
                 </select>
               </div>
             ) : null}

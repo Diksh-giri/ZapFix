@@ -19,7 +19,7 @@ describe("workflow form components", () => {
       onChange: vi.fn(),
     }));
     expect(html).toContain("Start (required)");
-    expect(html).toContain("Date to RFC 3339");
+    expect(html).toContain("Convert date for this app");
     expect(html).toContain("Fixed value");
   });
 
