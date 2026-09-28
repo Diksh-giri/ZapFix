@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { ManualMode } from "@/components/ManualMode";
+import { AppliedChangeResult } from "@/components/AppliedChangeResult";
 import { Button } from "@/components/ui/button";
 import { StepStatusList } from "@/components/StepStatusList";
 import { manualModeReason } from "@/lib/manual-mode";
@@ -15,7 +16,9 @@ import {
 } from "@/lib/run-detail";
 import { loadDiagnosis, loadRun, recordFailureOpened, requestDiagnosis, retryRun, RunRequestError } from "@/lib/runs-client";
 import type { DiagnosisView } from "@/lib/schemas/diagnosis";
+import type { AppliedChangeView } from "@/lib/schemas/change-results";
 import type { RunView } from "@/lib/schemas/runs";
+import { classifyRetryOutcome, type RetryOutcome } from "@/lib/result-recovery";
 
 const POLL_INTERVAL_MS = 1_500;
 
@@ -216,17 +219,27 @@ export function RunDiagnosisPanel({
   );
 }
 
-export function RunDetail({ runId, onReturnToEditor }: { runId: string; onReturnToEditor: () => void }) {
+export function RunDetail({
+  runId,
+  onReturnToEditor,
+  appliedChange = null,
+}: {
+  runId: string;
+  onReturnToEditor: () => void;
+  appliedChange?: AppliedChangeView | null;
+}) {
   const [state, dispatch] = useReducer(runDetailReducer, initialRunDetailState);
   const [busy, setBusy] = useState<"diagnose" | "retry" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [diagnosisState, setDiagnosisState] = useState<{ runId: string; value: DiagnosisView } | null>(null);
   const [repairLimitState, setRepairLimitState] = useState<{ runId: string; reached: true } | null>(null);
   const [confirmUncertain, setConfirmUncertain] = useState(false);
+  const [retryOutcomeState, setRetryOutcomeState] = useState<{ runId: string; value: RetryOutcome } | null>(null);
   const openedRuns = useRef(new Set<string>());
   const actionRunner = useRef(createExclusiveActionRunner());
   const diagnosis = diagnosisState?.runId === runId ? diagnosisState.value : null;
   const repairLimitReached = repairLimitState?.runId === runId;
+  const retryOutcome = retryOutcomeState?.runId === runId ? retryOutcomeState.value : null;
 
   const refresh = useCallback(async () => {
     dispatch({ type: "load_started" });
@@ -302,9 +315,27 @@ export function RunDetail({ runId, onReturnToEditor }: { runId: string; onReturn
     }
     setBusy("retry"); setActionError(null);
     try {
+      const originalView = state.view;
       const view = await retryRun(runId, latestStatus === "uncertain" && confirmUncertain);
       dispatch({ type: "load_succeeded", view });
       setConfirmUncertain(false);
+      if (appliedChange && originalView) {
+        const outcome = classifyRetryOutcome(originalView, view);
+        setRetryOutcomeState({ runId, value: outcome });
+        if (outcome === "new_error") {
+          try {
+            const result = await requestDiagnosis(runId);
+            setDiagnosisState({ runId, value: result.diagnosis });
+            setRepairLimitState(null);
+          } catch (caught) {
+            if (caught instanceof RunRequestError && caught.code === "repair_limit_reached") {
+              setRepairLimitState({ runId, reached: true });
+            } else {
+              setActionError(explainActionError(caught, "The retry finished, but the new diagnosis could not be started."));
+            }
+          }
+        }
+      }
     } catch (caught) {
       setActionError(explainActionError(caught, "The action could not be retried."));
     } finally {
@@ -331,6 +362,7 @@ export function RunDetail({ runId, onReturnToEditor }: { runId: string; onReturn
   return (
     <section className="space-y-2 border-t pt-6" aria-labelledby="run-detail-heading">
       <h2 id="run-detail-heading" className="text-lg font-semibold">Latest test run</h2>
+      {appliedChange ? <AppliedChangeResult change={appliedChange} outcome={retryOutcome} /> : null}
       <RunEvidence view={view} />
       <RunActions
         view={view}
