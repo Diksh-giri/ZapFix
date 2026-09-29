@@ -67,7 +67,7 @@ export async function createWorkflow(input: NewWorkflow, fetchRequest: FetchWork
 
 export async function updateWorkflow(
   id: string,
-  input: { name?: string; actionConfig?: ActionConfig; expectedConfigVersion: number },
+  input: { name?: string; actionConfig?: ActionConfig; connectionId?: string; expectedConfigVersion: number },
   fetchRequest: FetchWorkflowRequest = fetch,
 ) {
   const parsed = WorkflowSchema.safeParse(await json(await fetchRequest(`/api/workflows/${id}`, {

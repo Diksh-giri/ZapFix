@@ -52,6 +52,7 @@ function memoryStore(): WorkflowStore {
       if (row.configVersion !== input.expectedConfigVersion) return "version_conflict";
       if (input.name !== undefined) row.name = input.name;
       if (input.actionConfig !== undefined) row.actionConfig = input.actionConfig;
+      if (input.connectionId !== undefined) row.connectionId = input.connectionId;
       row.configVersion += 1;
       row.lastModifiedBy = "user";
       expiredFor.push(row.id);
@@ -268,5 +269,34 @@ describe("workflow service update", () => {
     })).rejects.toMatchObject({ code: "not_found", status: 404 });
 
     expect(created.name).toBe("Before");
+  });
+
+  it("relinks an orphaned workflow to a matching-provider connection the caller owns", async () => {
+    const created = await createWorkflow();
+    created.connectionId = null; // simulate a disconnected app (ON DELETE SET NULL)
+
+    const updated = await service().update(created.id, USER, {
+      connectionId: "conn-google",
+      expectedConfigVersion: 1,
+    });
+
+    expect(updated).toMatchObject({ connectionId: "conn-google", configVersion: 2 });
+  });
+
+  it("refuses to relink to another user's connection or the wrong provider, without changing anything", async () => {
+    const created = await createWorkflow();
+    created.connectionId = null;
+
+    await expect(service().update(created.id, USER, {
+      connectionId: "conn-slack",
+      expectedConfigVersion: 1,
+    })).rejects.toMatchObject({ code: "validation_failed" });
+    await expect(service().update(created.id, USER, {
+      connectionId: "not-owned",
+      expectedConfigVersion: 1,
+    })).rejects.toMatchObject({ code: "validation_failed" });
+
+    expect(created).toMatchObject({ connectionId: null, configVersion: 1 });
+    expect(expiredFor).toEqual([]);
   });
 });

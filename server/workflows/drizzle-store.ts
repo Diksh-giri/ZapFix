@@ -15,11 +15,8 @@ function asWorkflow(row: typeof workflows.$inferSelect): WorkflowRecord {
   if (!triggerSchema.success || !actionConfig.success) {
     throw new AppError("internal", "This workflow's settings are not valid.");
   }
-  // Its connection was disconnected (workflows.connection_id ON DELETE SET NULL): a normal,
-  // expected state, not corruption. The tester needs to pick a connection again.
-  if (!row.connectionId) {
-    throw new AppError("no_active_connection", "This workflow's connection was removed. Choose a connection to keep editing.");
-  }
+  // A null connectionId (its connection was disconnected: workflows.connection_id ON DELETE
+  // SET NULL) is a normal, expected state, not corruption -- the editor shows a picker for it.
   return {
     id: row.id,
     userId: row.userId,
@@ -59,7 +56,7 @@ export function createDrizzleWorkflowStore(db: Database): WorkflowStore {
         .from(workflows)
         .where(eq(workflows.userId, userId))
         .orderBy(desc(workflows.updatedAt));
-      // A single workflow with no connection (or invalid settings) must not take the whole
+      // A single workflow with corrupted settings (malformed JSON) must not take the whole
       // list down for every other, healthy workflow. Its own GET /api/workflows/{id} still
       // surfaces the real reason when the tester opens it directly.
       const out: WorkflowRecord[] = [];
@@ -99,6 +96,7 @@ export function createDrizzleWorkflowStore(db: Database): WorkflowStore {
           .set({
             ...(input.name !== undefined ? { name: input.name } : {}),
             ...(input.actionConfig !== undefined ? { actionConfig: input.actionConfig } : {}),
+            ...(input.connectionId !== undefined ? { connectionId: input.connectionId } : {}),
             configVersion: current.configVersion + 1,
             lastModifiedBy: "user",
             updatedAt: new Date(),

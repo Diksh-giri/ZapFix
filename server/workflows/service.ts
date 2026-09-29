@@ -9,7 +9,7 @@ export interface WorkflowRecord {
   name: string;
   app: AppId;
   actionKey: string;
-  connectionId: string;
+  connectionId: string | null;
   triggerSchema: TriggerSchema;
   actionConfig: ActionConfig;
   configVersion: number;
@@ -29,6 +29,7 @@ export interface WorkflowStore {
     expectedConfigVersion: number;
     name?: string;
     actionConfig?: ActionConfig;
+    connectionId?: string;
   }): Promise<"not_found" | "version_conflict" | WorkflowRecord>;
 }
 
@@ -50,6 +51,7 @@ export interface CreateWorkflowInput {
 export interface UpdateWorkflowInput {
   name?: string;
   actionConfig?: ActionConfig;
+  connectionId?: string;
   expectedConfigVersion: number;
 }
 
@@ -111,6 +113,14 @@ export function createWorkflowService(deps: WorkflowServiceDeps) {
           current.triggerSchema,
           input.actionConfig,
         );
+      }
+
+      if (input.connectionId !== undefined) {
+        const adapter = deps.getAdapter(current.app);
+        const connection = await deps.store.getConnection(input.connectionId, userId);
+        if (!connection || connection.provider !== adapter.provider) {
+          throw new AppError("validation_failed", "Choose a connection for this app.");
+        }
       }
 
       const updated = await deps.store.update({ id, userId, ...input });
