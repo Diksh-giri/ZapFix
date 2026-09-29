@@ -13,6 +13,7 @@ import type { ActionConfig, TriggerSchema } from "@/lib/schemas/workflow-config"
 import type { AppCatalogItem, Workflow } from "@/lib/schemas/workflows";
 import type { ClientConnection } from "@/lib/schemas/connections";
 import { activeConnectionsFor, createWorkflow, loadWorkflowSetup, loadWorkflows } from "@/lib/workflows-client";
+import { instantiateTemplate, WORKFLOW_TEMPLATES } from "@/server/templates";
 
 const DEFAULT_TRIGGER: TriggerSchema = {
   fields: [
@@ -55,6 +56,8 @@ export function WorkflowsScreen() {
   const [actionConfig, setActionConfig] = useState<ActionConfig>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [templateBusyId, setTemplateBusyId] = useState<string | null>(null);
+  const [templateError, setTemplateError] = useState<string | null>(null);
 
   const refreshWorkflows = useCallback(async () => {
     try {
@@ -80,6 +83,26 @@ export function WorkflowsScreen() {
     () => app ? activeConnectionsFor(connections, app.provider) : [],
     [app, connections],
   );
+
+  async function startFromTemplate(templateId: string) {
+    const template = WORKFLOW_TEMPLATES.find((item) => item.id === templateId);
+    const templateApp = apps.find((item) => item.id === template?.app);
+    if (!template || !templateApp) return;
+    const connection = activeConnectionsFor(connections, templateApp.provider)[0];
+    if (!connection) {
+      setTemplateError(`Connect ${templateApp.provider} first, then try this template again.`);
+      return;
+    }
+    setTemplateBusyId(templateId);
+    setTemplateError(null);
+    try {
+      const created = await createWorkflow(instantiateTemplate(template, connection.id));
+      router.push(`/workflows/${created.id}`);
+    } catch (error) {
+      setTemplateError(error instanceof Error ? error.message : "The template could not be created.");
+      setTemplateBusyId(null);
+    }
+  }
 
   function chooseApp(nextId: string) {
     const next = apps.find((item) => item.id === nextId);
@@ -118,6 +141,27 @@ export function WorkflowsScreen() {
         </Button>} />
 
       <Notice tone="warning" title="Use test data">Actions run on your real connected accounts. Use a test calendar, channel, inbox, drive, or spreadsheet.</Notice>
+
+      {status === "ready" ? (
+        <Surface className="space-y-4">
+          <SurfaceHeader title="Start from a template" description="Ready-made workflows, including a few deliberately broken ones, to try the recovery flow without building your own." />
+          {templateError ? <Notice tone="error">{templateError}</Notice> : null}
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {WORKFLOW_TEMPLATES.map((template) => (
+              <li key={template.id} className="rounded-md border border-neutral-200 p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="font-medium">{template.name}</span>
+                  {template.deliberatelyBroken ? <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">Deliberately broken</span> : null}
+                </div>
+                <p className="mt-1 text-sm text-neutral-600">{template.description}</p>
+                <Button className="mt-3" type="button" variant="outline" disabled={templateBusyId !== null} onClick={() => void startFromTemplate(template.id)}>
+                  {templateBusyId === template.id ? "Creating..." : "Use this template"}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </Surface>
+      ) : null}
 
       {showCreate ? (
         <Surface className="space-y-5">
