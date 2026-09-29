@@ -23,7 +23,8 @@ const NOTE =
  *   - if the SAME setting was edited by hand since, refuse with manual_edit_conflict unless the user
  *     confirmed the overwrite; edits to other settings are kept
  *   - the approval and the change record are never deleted or rewritten; only status/restored_at change
- * `restore_started` is kept even when the restore is refused, so started vs finished shows refusals.
+ * `restore_started` is written durably before the mutation transaction, so started vs finished also
+ * captures logical refusals and thrown transactional failures.
  */
 export async function restoreChange(
   deps: { store: ProposalStore; now: () => Date; restoreAttemptId?: () => string },
@@ -32,17 +33,21 @@ export async function restoreChange(
   type Outcome = { ok: true; result: RestoreResult } | { ok: false; error: AppError };
   const restoreAttemptId = deps.restoreAttemptId?.() ?? randomUUID();
 
+  // Record the attempt outside the mutation transaction so a later transactional failure remains measurable.
+  // The locked transaction below reloads and rechecks everything before changing state.
+  const preflight = await deps.store.transaction((tx) => tx.loadChange(input.changeId));
+  if (!preflight || preflight.workflow.userId !== input.userId) throw new AppError("not_found", "That change was not found.");
+  await recordEvent(deps.store.audit, {
+    userId: input.userId,
+    runId: preflight.runId,
+    type: "restore_started",
+    payload: { config_change_id: preflight.change.id, restore_attempt_id: restoreAttemptId },
+  });
+
   const outcome: Outcome = await deps.store.transaction(async (tx): Promise<Outcome> => {
     const ctx = await tx.loadChange(input.changeId);
     if (!ctx || ctx.workflow.userId !== input.userId) throw new AppError("not_found", "That change was not found.");
     const { change, workflow, runId } = ctx;
-
-    await recordEvent(tx.audit, {
-      userId: input.userId,
-      runId,
-      type: "restore_started",
-      payload: { config_change_id: change.id, restore_attempt_id: restoreAttemptId },
-    });
 
     if (change.status === "restored") {
       return { ok: false, error: new AppError("conflict", "This change has already been restored.") };

@@ -13,6 +13,8 @@ Do not administer or store a completed scorecard until both owners approve the c
 - Moderator code:
 - Observer code, if present:
 - Scenario identifier:
+- Approved answer-key version:
+- Observer confirmed the answer key remained hidden from the participant: Yes / No
 - Starting workflow configuration verified: Yes / No
 - Cohort: Live test / Recorded fixture
 - Workflow ID:
@@ -88,7 +90,7 @@ The repository's decision-time query measures from the first `failure_opened` ev
 - Counts as a correct explanation for the aggregate target: Yes / No
 - Supporting participant quote or observation:
 
-Count the participant as correct only when both the failed step and likely cause are explained correctly. The primary denominator is every eligible session that began the participant scenario. A participant who cannot reach or explain the failure counts as unsuccessful. Report assisted completion separately and list every predeclared exclusion with its reason.
+Count the participant as correct only when both the failed step and likely cause match the approved moderator-only scenario answer key. The primary denominator is every eligible session that began the participant scenario. A participant who cannot reach or explain the failure counts as unsuccessful. Report assisted completion separately and list every predeclared exclusion with its reason. Stop scoring the scenario if live evidence conflicts with its answer key.
 
 ### 2 Decision time
 
@@ -153,7 +155,7 @@ Average item 9 from `docs/USABILITY_PARTICIPANT_SURVEY.md` across completed resp
 - Configuration change shows restored state: Yes / No / Not applicable
 - Notes:
 
-Use the saved `restore_success` query together with the per-session scorecards. The server gives each restore request a unique `restore_attempt_id`, and the query matches its started and finished events to the same user, run, configuration change and attempt. Restrict both query CTEs to the live study window before reporting the cohort. If an attempt cannot be correlated to a completion, report it as unsuccessful or unresolved rather than assuming success.
+Use the saved `restore_success` query together with the per-session scorecards. The server gives each restore request a unique `restore_attempt_id`, and the query matches its started and finished events to the same user, run, configuration change and attempt. The required `study_run_ids` allowlist restricts both event sets to the declared live cohort. If an attempt cannot be correlated to a completion, report it as unsuccessful or unresolved rather than assuming success.
 
 ## Diagnostic observations
 
@@ -171,6 +173,8 @@ These observations help explain usability problems but are not additional PRD su
 ## Aggregate reporting worksheet
 
 Complete this only after reviewing all eligible session records and running the applicable saved SQL queries against the approved test database. Report live and fixture cohorts separately. Do not combine fixture observations with live operational outcomes.
+
+Before running `approvals_with_change`, `time_from_failure_to_decision`, `recovery_rate`, `retries_per_resolved_run`, or `restore_success`, create the temporary `study_run_ids` table shown at the top of `server/audit/metrics.sql`. Insert only the live run IDs from included scorecards. Review the inserted IDs against the scorecards before running a query; never add fixture, smoke, internal, excluded, or unrelated runs. The queries intentionally fail when this allowlist is missing.
 
 | Existing PRD target | Result | Sample or denominator | Target met | Evidence source |
 | --- | --- | --- | --- | --- |

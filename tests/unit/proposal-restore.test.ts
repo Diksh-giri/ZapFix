@@ -167,7 +167,15 @@ describe("restoreChange is all-or-nothing", () => {
       await expect(restore(store, changeId)).rejects.toThrow();
       expect(store.workflow("wf-1")).toEqual(workflow);
       expect(store.changes()[0]!.status).toBe("applied");
-      expect(store.events()).toEqual(events);
+      if (point === "insertEvent") {
+        expect(store.events()).toEqual(events);
+      } else {
+        expect(store.events().slice(0, -1)).toEqual(events);
+        expect(store.events().at(-1)).toMatchObject({
+          type: "restore_started",
+          payload: { config_change_id: changeId, restore_attempt_id: "restore-attempt-1" },
+        });
+      }
     },
   );
 });

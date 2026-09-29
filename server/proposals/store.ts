@@ -75,6 +75,8 @@ export interface ProposalTx {
 
 /** Persistence port for proposals. drizzle-store.ts is the real one; memory-store.ts is the test double. */
 export interface ProposalStore {
+  /** Durable event writer outside proposal transactions (used to retain restore attempts that later fail). */
+  audit: AuditStore;
   /** A plain read (no locks) of a proposal the user owns, for showing it. Undefined if unknown or not theirs. */
   getContext(proposalId: string, userId: string): Promise<ProposalContext | undefined>;
   /**

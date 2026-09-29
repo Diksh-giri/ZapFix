@@ -192,6 +192,7 @@ function makeTx(trx: Executor): ProposalTx {
 
 export function createDrizzleProposalStore(db: Database): ProposalStore {
   return {
+    audit: createDrizzleAuditStore(db),
     async getContext(proposalId, userId) {
       const ctx = await readContext(db, proposalId, false); // a plain read: no locks, so showing a proposal never blocks a confirm
       return ctx && ctx.workflow.userId === userId ? ctx : undefined;

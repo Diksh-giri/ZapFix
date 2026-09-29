@@ -64,6 +64,22 @@ export function createMemoryProposalStore(): MemoryProposalStore {
 
   const clone = (s: State): State => structuredClone(s);
 
+  const durableAudit: ProposalStore["audit"] = {
+    async insertEvent(e) {
+      maybeFail("insertEvent");
+      state.events.push(structuredClone(e));
+    },
+    async hasEvent(userId, runId, type) {
+      return state.events.some((e) => e.userId === userId && e.runId === runId && e.type === type);
+    },
+    async incrementRateLimit() {
+      return 1;
+    },
+    async runOwnedBy() {
+      return true;
+    },
+  };
+
   function makeTx(s: State): ProposalTx {
     return {
       async load(proposalId) {
@@ -163,6 +179,7 @@ export function createMemoryProposalStore(): MemoryProposalStore {
   }
 
   return {
+    audit: durableAudit,
     all: () => state.proposals.map((r) => ({ ...r })),
     setStatus(id, status) {
       const row = state.proposals.find((r) => r.id === id);

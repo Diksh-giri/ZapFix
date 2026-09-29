@@ -126,6 +126,33 @@ Ask without requiring the participant to disclose confidential business informat
 
 ## Participant scenario
 
+### Moderator-only scenario answer key
+
+Before recruiting participants, create an answer key for each scenario and have both owners approve it. Keep it out of the participant-facing task sheet. The answer key must record:
+
+- Scenario identifier and version.
+- Expected failed step.
+- Expected supported error category.
+- Plain-language expected cause.
+- System evidence that supports the cause.
+- Expected safe candidate or reconnect guidance.
+- Fixture or live setup used to verify the answer.
+- Verifier names and verification date.
+
+Use the same approved answer-key version for every participant in a comparable round. Observers must judge the failed step and likely cause against this key, not personal interpretation. If the live application returns evidence that conflicts with the key, stop scoring that scenario and investigate it as a product or scenario defect.
+
+Moderator-only answer key template:
+
+- Scenario identifier and version:
+- Expected failed step:
+- Expected category:
+- Expected cause:
+- Required supporting evidence:
+- Expected safe candidate or guidance:
+- Verification mode:
+- Verified by:
+- Verification date:
+
 Give the participant this scenario without naming the expected error category or repair:
 
 > You manage a workflow that takes information entered in a form and creates an event in a test Google Calendar. A recent test run failed. You want to understand what happened, decide whether ZapFix's recommendation is safe, and determine whether the workflow can run successfully. Work as you normally would. You may approve, reject, or leave the recommendation based on the information you see.
