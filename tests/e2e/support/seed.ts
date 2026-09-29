@@ -21,12 +21,17 @@ function getTokenKey(): { key: Buffer; version: number } {
 }
 
 /**
- * Seeds one broken Calendar workflow, and its Google/Slack connections, for the e2e test user
- * (T29). Never goes through real OAuth: the connections' tokens are fake values the fixture-mocked
- * adapter (tests/e2e/support/fixture-fetch.ts) never actually sends anywhere. The Google token's
- * expiry is set far in the future so getAccessToken() skips the refresh call entirely (which
- * would otherwise hit Google's real token endpoint -- there is no fixture for that, by design,
- * since no e2e scenario needs a token refresh).
+ * Seeds one broken Calendar workflow and one broken Slack workflow, and their Google/Slack
+ * connections, for the e2e test user (T29). Never goes through real OAuth: the connections'
+ * tokens are fake values the fixture-mocked adapter (tests/e2e/support/fixture-fetch.ts) never
+ * actually sends anywhere. The Google token's expiry is set far in the future so getAccessToken()
+ * skips the refresh call entirely (which would otherwise hit Google's real token endpoint --
+ * there is no fixture for that, by design, since no e2e scenario needs a token refresh).
+ *
+ * Google Sheets has no e2e workflow yet: unlike Calendar and Slack, there are no real recorded
+ * Sheets fixtures beyond an auth-error one (tests/fixtures/google-sheets/), and AGENTS.md section
+ * 9 is explicit that app behavior must never be guessed -- a live Sheets call needs to be recorded
+ * first (see docs/TASK_BRIEFS.md's T29 status line).
  *
  * SAFETY: the unique constraint on connections is (userId, provider) -- one Google and one Slack
  * connection per user, period. Run this against the wrong user id and it does not create a
@@ -36,7 +41,7 @@ function getTokenKey(): { key: Buffer; version: number } {
  * CI/e2e test user that has never connected a real Google or Slack account.
  *
  * Run standalone: npx tsx tests/e2e/support/seed.ts --user-id <uuid> --confirm
- * Playwright's global setup imports seedCalendarWorkflow() directly instead.
+ * Playwright's global setup imports seedCalendarWorkflow()/seedSlackWorkflow() directly instead.
  */
 export interface SeededCalendar {
   workflowId: string;
@@ -61,6 +66,18 @@ const ACTION_CONFIG: ActionConfig = {
   start: { kind: "static", value: "2030-06-15T10:00:00Z" },
   end: { kind: "static", value: "2030-06-15T11:00:00Z" },
   attendee_email: { kind: "mapped", source: "email" },
+};
+
+const SLACK_TRIGGER_SCHEMA: TriggerSchema = {
+  fields: [
+    { key: "channel", label: "Channel", type: "text" },
+    { key: "backup_channel", label: "Backup channel", type: "text" },
+  ],
+};
+
+const SLACK_ACTION_CONFIG: ActionConfig = {
+  text: { kind: "static", value: "ZapFix e2e test message" },
+  channel: { kind: "mapped", source: "channel" },
 };
 
 function client() {
@@ -149,6 +166,33 @@ export async function seedSlackConnection(userId: string): Promise<{ connectionI
   return { connectionId };
 }
 
+/**
+ * Seeds one broken Slack message workflow for the e2e test user: "Channel" is mapped from an
+ * always-blank trigger field, with "Backup channel" as the one real alternative -- the same
+ * missing-field-with-one-alternative shape as the Calendar workflow, matching the recorded AI
+ * reply in evals/ai-recordings/slack-empty-channel-one-alternative.txt.
+ */
+export async function seedSlackWorkflow(userId: string): Promise<SeededCalendar> {
+  const db = client();
+  const { connectionId } = await seedSlackConnection(userId);
+
+  const [workflow] = await db
+    .insert(workflows)
+    .values({
+      userId,
+      name: "e2e: broken Slack message",
+      app: "slack",
+      actionKey: "post_message",
+      connectionId,
+      triggerSchema: SLACK_TRIGGER_SCHEMA,
+      actionConfig: SLACK_ACTION_CONFIG,
+    })
+    .returning({ id: workflows.id });
+  if (!workflow) throw new Error("Could not create the e2e Slack workflow.");
+
+  return { workflowId: workflow.id, connectionId };
+}
+
 if (require.main === module) {
   const args = process.argv.slice(2);
   const userId = args[args.indexOf("--user-id") + 1];
@@ -159,7 +203,7 @@ if (require.main === module) {
     process.exit(1);
   }
   seedCalendarWorkflow(userId)
-    .then((result) => seedSlackConnection(userId).then((slack) => ({ ...result, ...slack })))
+    .then((calendar) => seedSlackWorkflow(userId).then((slack) => ({ calendar, slack })))
     .then((result) => {
       console.log("Seeded:", result);
       process.exit(0);
