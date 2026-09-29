@@ -43,7 +43,7 @@ export function AppliedChangeResult({
   return (
     <section className="space-y-3 rounded-md border p-4" aria-labelledby="applied-change-heading">
       <div className="flex items-center justify-between gap-3"><h3 id="applied-change-heading" className="font-semibold">Change applied</h3><StatusBadge label="Approved change" tone="success" /></div>
-      <dl className="grid grid-cols-[minmax(7rem,auto)_1fr] gap-x-4 gap-y-2 text-sm">
+      <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[minmax(7rem,auto)_minmax(0,1fr)]">
         <dt className="text-neutral-600">Setting</dt><dd>{change.fieldPath}</dd>
         <dt className="text-neutral-600">Original</dt><dd>{describeResultValue(change.originalValue)}</dd>
         <dt className="text-neutral-600">Updated</dt><dd>{describeResultValue(change.updatedValue)}</dd>
@@ -60,12 +60,12 @@ export function AppliedChangeResult({
         {restoreState === "restored" ? (
           <Notice tone="success" title="Previous setting restored">Restore changed ZapFix settings only. It did not undo actions already taken in a connected app.</Notice>
         ) : restoreState === "confirming" ? (
-          <DialogPanel titleId="restore-confirm-heading" descriptionId="restore-confirm-description" title="Restore the previous setting?" actions={<>
+          <DialogPanel onDismiss={onCancelRestore} titleId="restore-confirm-heading" descriptionId="restore-confirm-description" title="Restore the previous setting?" actions={<>
               <Button onClick={() => onConfirmRestore?.(false)}>Confirm restore</Button>
               <Button variant="outline" onClick={onCancelRestore}>Cancel</Button>
             </>}>This restores the previous ZapFix setting. It cannot undo actions already taken in Google Calendar, Gmail, Drive, Slack, or Sheets.</DialogPanel>
         ) : restoreState === "conflict" ? (
-          <DialogPanel titleId="restore-conflict-heading" descriptionId="restore-conflict-description" title="This setting was edited by hand" actions={<>
+          <DialogPanel onDismiss={onCancelRestore} titleId="restore-conflict-heading" descriptionId="restore-conflict-description" title="This setting was edited by hand" actions={<>
               <Button onClick={() => onConfirmRestore?.(true)}>Overwrite and restore</Button>
               <Button variant="outline" onClick={onCancelRestore}>Keep manual edit</Button>
             </>}>Restoring will overwrite the newer manual edit. Continue only if you want the approved change’s original value restored.</DialogPanel>

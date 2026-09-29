@@ -41,6 +41,10 @@ describe("product shell", () => {
     expect(html).toContain("Workflow recovery");
     expect(html).toContain("tester@example.com");
     expect(html).toMatch(/<a[^>]*aria-current="page"[^>]*href="\/workflows"/);
+    expect(html).toContain("Skip to main content");
+    expect(html).toContain('aria-controls="mobile-navigation"');
+    expect(html).toContain('aria-expanded="false"');
+    expect(html).toContain('id="main-content"');
     expect(html).toContain("Page content");
   });
 

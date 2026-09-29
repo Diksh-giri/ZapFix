@@ -87,7 +87,7 @@ export function RunEvidence({ view }: { view: RunView }) {
 
       <section aria-labelledby="run-data-heading" className="space-y-3">
         <h3 id="run-data-heading" className="font-semibold">Data used for this run</h3>
-        <dl className="grid grid-cols-[minmax(7rem,auto)_1fr] gap-x-4 gap-y-2 text-sm">
+        <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[minmax(7rem,auto)_minmax(0,1fr)]">
           {triggerEntries.map(([key, value]) => (
             <div key={key} className="contents">
               <dt className="font-medium">{key}</dt>

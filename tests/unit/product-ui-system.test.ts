@@ -41,6 +41,8 @@ describe("shared product UI", () => {
       actions: createElement("button", null, "Confirm"),
     }, "This cannot undo an external action."));
     expect(html).toContain('role="alertdialog"');
+    expect(html).toContain('aria-modal="true"');
+    expect(html).toContain('tabindex="-1"');
     expect(html).toContain('aria-labelledby="title"');
     expect(html).toContain("This cannot undo an external action.");
   });
