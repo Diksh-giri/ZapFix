@@ -71,7 +71,7 @@ The current local baseline on `main` is 63 passing Vitest files and 749 passing 
 
 The Calendar milestone is not complete until the user can finish the entire guarded recovery journey. The main remaining work is:
 
-- **T19:** diagnosis and proposal interface, valid-option selection, approval dialog, reject/exit handling, and the handoff to the existing result view.
+- **T19 live verification:** the diagnosis, proposal, approval, decision, and result handoff interfaces are implemented; verify approve, alternate-option, reject, exit, retry, and restore against a real failed Calendar run.
 - **T22 and T23:** real-model smoke verification and prompt tuning against the evaluation set. These tasks are owned by Dikshyant.
 - **T24:** expand the rules and AI evaluation set and wire its quality gates into CI.
 - **T28:** finish the remaining integration coverage for the eleven safety tests.

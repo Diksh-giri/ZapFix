@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { ManualMode } from "@/components/ManualMode";
 import { AppliedChangeResult } from "@/components/AppliedChangeResult";
+import { DebuggerPanel, defaultProposalOption } from "@/components/DebuggerPanel";
 import { Button } from "@/components/ui/button";
 import { StepStatusList } from "@/components/StepStatusList";
 import { manualModeReason } from "@/lib/manual-mode";
@@ -14,9 +15,10 @@ import {
   shouldRecordFailureOpened,
   shouldPollRun,
 } from "@/lib/run-detail";
-import { loadDiagnosis, loadRun, recordFailureOpened, requestDiagnosis, restoreAppliedChange, retryRun, RunRequestError } from "@/lib/runs-client";
+import { confirmProposal, decideProposal, loadDiagnosis, loadRun, recordFailureOpened, recordSummaryViewed, requestDiagnosis, restoreAppliedChange, retryRun, RunRequestError } from "@/lib/runs-client";
 import type { DiagnosisView } from "@/lib/schemas/diagnosis";
 import type { AppliedChangeView } from "@/lib/schemas/change-results";
+import type { ProposalView } from "@/lib/schemas/proposals";
 import type { RunView } from "@/lib/schemas/runs";
 import { classifyRetryOutcome, type RetryOutcome } from "@/lib/result-recovery";
 
@@ -128,7 +130,7 @@ export function RunEvidence({ view }: { view: RunView }) {
 
 interface RunActionsProps {
   view: RunView;
-  busy: "diagnose" | "retry" | "restore" | null;
+  busy: "diagnose" | "retry" | "restore" | "proposal" | null;
   diagnosisId: string | null;
   confirmUncertain: boolean;
   error: string | null;
@@ -222,16 +224,21 @@ export function RunDiagnosisPanel({
 export function RunDetail({
   runId,
   onReturnToEditor,
-  appliedChange = null,
+  appliedChange: initialAppliedChange = null,
 }: {
   runId: string;
   onReturnToEditor: () => void;
   appliedChange?: AppliedChangeView | null;
 }) {
   const [state, dispatch] = useReducer(runDetailReducer, initialRunDetailState);
-  const [busy, setBusy] = useState<"diagnose" | "retry" | "restore" | null>(null);
+  const [busy, setBusy] = useState<"diagnose" | "retry" | "restore" | "proposal" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [diagnosisState, setDiagnosisState] = useState<{ runId: string; value: DiagnosisView } | null>(null);
+  const [proposalState, setProposalState] = useState<{ runId: string; value: ProposalView } | null>(null);
+  const [selectedOptionId, setSelectedOptionId] = useState("");
+  const [approvalOpen, setApprovalOpen] = useState(false);
+  const [proposalOutdatedRunId, setProposalOutdatedRunId] = useState<string | null>(null);
+  const [appliedChangeState, setAppliedChangeState] = useState<{ runId: string; value: AppliedChangeView } | null>(null);
   const [repairLimitState, setRepairLimitState] = useState<{ runId: string; reached: true } | null>(null);
   const [confirmUncertain, setConfirmUncertain] = useState(false);
   const [retryOutcomeState, setRetryOutcomeState] = useState<{
@@ -247,6 +254,8 @@ export function RunDetail({
   const openedRuns = useRef(new Set<string>());
   const actionRunner = useRef(createExclusiveActionRunner());
   const diagnosis = diagnosisState?.runId === runId ? diagnosisState.value : null;
+  const proposal = proposalState?.runId === runId ? proposalState.value : null;
+  const appliedChange = appliedChangeState?.runId === runId ? appliedChangeState.value : initialAppliedChange;
   const repairLimitReached = repairLimitState?.runId === runId;
   const retryOutcome = retryOutcomeState?.runId === runId && retryOutcomeState.configChangeId === appliedChange?.configChangeId
     ? retryOutcomeState.value
@@ -292,7 +301,9 @@ export function RunDetail({
     void loadDiagnosis(diagnosisId)
       .then((loaded) => {
         if (!cancelled) {
-          setDiagnosisState({ runId, value: loaded });
+          setDiagnosisState({ runId, value: loaded.diagnosis });
+          setProposalState(loaded.proposal ? { runId, value: loaded.proposal } : null);
+          setSelectedOptionId(loaded.proposal ? defaultProposalOption(loaded.proposal)?.id ?? "" : "");
           setActionError(null);
         }
       })
@@ -307,6 +318,10 @@ export function RunDetail({
     try {
       const result = await requestDiagnosis(runId);
       setDiagnosisState({ runId, value: result.diagnosis });
+      setProposalState(result.proposal ? { runId, value: result.proposal } : null);
+      setSelectedOptionId(result.proposal ? defaultProposalOption(result.proposal)?.id ?? "" : "");
+      setApprovalOpen(false);
+      setProposalOutdatedRunId(null);
       setRepairLimitState(null);
     } catch (caught) {
       if (caught instanceof RunRequestError && caught.code === "repair_limit_reached") {
@@ -314,6 +329,59 @@ export function RunDetail({
         setActionError(null);
       } else {
         setActionError(explainActionError(caught, "The diagnosis could not be started."));
+      }
+    } finally {
+      setBusy(null);
+    }
+  });
+
+  const openApproval = () => {
+    if (!proposal || !selectedOptionId || busy !== null) return;
+    setActionError(null);
+    setApprovalOpen(true);
+    void recordSummaryViewed(runId).catch(() => {});
+  };
+
+  const decide = (decision: "rejected" | "exited") => actionRunner.current(async () => {
+    if (!proposal) return;
+    setBusy("proposal"); setActionError(null);
+    try {
+      await decideProposal(proposal.id, decision);
+      setProposalState({ runId, value: { ...proposal, status: "decided" } });
+      setApprovalOpen(false);
+    } catch (caught) {
+      setActionError(explainActionError(caught, "The proposal decision could not be saved."));
+    } finally {
+      setBusy(null);
+    }
+  });
+
+  const confirm = () => actionRunner.current(async () => {
+    if (!proposal) return;
+    const option = proposal.options.find((candidate) => candidate.id === selectedOptionId);
+    if (!option) return;
+    setBusy("proposal"); setActionError(null);
+    try {
+      const result = await confirmProposal(proposal.id, {
+        ...(option.isDefault ? {} : { selectedOptionId: option.id }),
+        expectedConfigVersion: proposal.baseConfigVersion,
+        summaryHash: option.summaryHash,
+      });
+      setAppliedChangeState({ runId, value: {
+        configChangeId: result.configChangeId,
+        approvalId: result.approvalId,
+        fieldPath: option.summary.fieldPath,
+        originalValue: option.summary.currentValue,
+        updatedValue: option.summary.proposedValue,
+      } });
+      setProposalState({ runId, value: { ...proposal, status: "decided" } });
+      setApprovalOpen(false);
+    } catch (caught) {
+      setActionError(explainActionError(caught, "The proposed change could not be applied."));
+      if (caught instanceof RunRequestError && caught.code === "proposal_outdated") {
+        setApprovalOpen(false);
+        setProposalState(null);
+        setProposalOutdatedRunId(runId);
       }
     } finally {
       setBusy(null);
@@ -407,7 +475,7 @@ export function RunDetail({
       <RunActions
         view={view}
         busy={busy}
-        diagnosisId={retryOutcome === "new_error"
+        diagnosisId={retryOutcome === "new_error" || proposalOutdatedRunId === runId
           ? null
           : diagnosis?.id ?? view.latestDiagnosisId ?? (repairLimitReached ? "repair-limit" : null)}
         confirmUncertain={confirmUncertain}
@@ -424,6 +492,22 @@ export function RunDetail({
         onRetryDiagnosis={() => void diagnose()}
         onReturnToEditor={onReturnToEditor}
       />
+      {diagnosis && proposal && !manualModeReason(diagnosis, repairLimitReached) ? (
+        <DebuggerPanel
+          diagnosis={diagnosis}
+          proposal={proposal}
+          selectedOptionId={selectedOptionId}
+          dialogOpen={approvalOpen}
+          busy={busy !== null}
+          error={actionError}
+          onSelectOption={setSelectedOptionId}
+          onOpenDialog={openApproval}
+          onCloseDialog={() => { if (busy === null) setApprovalOpen(false); }}
+          onConfirm={() => void confirm()}
+          onReject={() => void decide("rejected")}
+          onExit={() => void decide("exited")}
+        />
+      ) : null}
       {state.status === "loading" ? <p className="text-sm" role="status">Checking run status...</p> : null}
       {state.status === "error" ? (
         <div className="flex items-center gap-3" role="alert">

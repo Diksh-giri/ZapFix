@@ -179,7 +179,8 @@ Owners: **D** = Dikshyant (safety core + AI client), **J** = James (experience, 
 **Acceptance:** live status updates via polling; failure view shows failed step, steps that succeeded before, and the original error.
 
 ### T19. Debugger panel and confirm dialog (J, L)
-**Depends on:** T14, T23 (build against mocks until they land). **Start here:** `components/DiffView.tsx`, `ConfidenceBadge.tsx`, `EvidenceList.tsx` (done), `components/ApprovalDialog.tsx` (stub), `server/proposals/summary.ts`.
+**Depends on:** T14, T23. **Start here:** `components/DebuggerPanel.tsx`, `components/ApprovalDialog.tsx`, `components/DiffView.tsx`, `components/ConfidenceBadge.tsx`, `components/EvidenceList.tsx`, `server/proposals/summary.ts`.
+**Status:** Code complete and tested (2026-09-29), branch `j/T19-debugger-panel`: typed browser-safe proposal summaries and hashes; ownership-scoped proposal polling with the diagnosis; separate system evidence and AI explanation; confidence reason, one-field diff and closed-list option picker; reconnect guidance without approval controls; focus-on-open approval dialog; guarded confirm/reject/exit actions; `summary_viewed` recording; `proposal_outdated` handling; duplicate-action protection; and the T20 applied-change handoff. `npm run check`, `npm run eval`, and `npm run build` pass. Still to verify manually against a real failed Calendar run: approve, alternate option, reject, exit, retry, and restore. The proposal read touches safety-critical code and requires both developers' review before merge.
 **Build:**
 1. Diagnosis card: **"Confirmed by the system"** (`EvidenceList`) visibly separate from the **"AI-generated explanation"**; `ConfidenceBadge` (High/Medium/Low with a one-line reason); likely cause in plain words.
 2. Proposal: `DiffView` (field, current, proposed), expected effect, valid-option picker (from `valid_options`; no free text), the line **"No change will be made unless you confirm."**

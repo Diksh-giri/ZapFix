@@ -215,6 +215,13 @@ export function createMemoryProposalStore(): MemoryProposalStore {
       return ctx && ctx.workflow.userId === userId ? ctx : undefined;
     },
 
+    async getContextByDiagnosis(diagnosisId, userId) {
+      const proposal = state.proposals.find((row) => row.diagnosisId === diagnosisId);
+      if (!proposal) return undefined;
+      const ctx = await makeTx(clone(state)).load(proposal.id);
+      return ctx && ctx.workflow.userId === userId ? ctx : undefined;
+    },
+
     async replacePending(workflowId, _diagnosisId, draft: ProposalDraft | null) {
       for (const row of state.proposals) {
         if (row.workflowId === workflowId && row.status === "pending") row.status = "superseded";

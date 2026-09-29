@@ -1,6 +1,8 @@
 import { RunViewSchema, type RunView } from "@/lib/schemas/runs";
-import { DiagnosisViewSchema, type DiagnosisView } from "@/lib/schemas/diagnosis";
+import { DiagnosisViewSchema } from "@/lib/schemas/diagnosis";
 import { RestoreResultSchema, type RestoreResult } from "@/lib/schemas/change-results";
+import { ConfirmResultSchema, type ConfirmResult } from "@/lib/schemas/change-results";
+import { ProposalViewSchema } from "@/lib/schemas/proposals";
 import { z } from "zod";
 
 export type FetchRunRequest = (input: string, init?: RequestInit) => Promise<Response>;
@@ -49,7 +51,7 @@ export async function retryRun(
 
 const DiagnosisStartSchema = z.object({
   diagnosis: DiagnosisViewSchema,
-  proposal: z.unknown().nullable(),
+  proposal: ProposalViewSchema.nullable(),
 });
 export type DiagnosisStart = z.infer<typeof DiagnosisStartSchema>;
 
@@ -61,12 +63,46 @@ export async function requestDiagnosis(id: string, fetchRequest: FetchRunRequest
   return parsed.data;
 }
 
-export async function loadDiagnosis(id: string, fetchRequest: FetchRunRequest = fetch): Promise<DiagnosisView> {
-  const parsed = DiagnosisViewSchema.safeParse(await json(await fetchRequest(`/api/diagnoses/${id}`, {
+export async function loadDiagnosis(id: string, fetchRequest: FetchRunRequest = fetch): Promise<DiagnosisStart> {
+  const parsed = DiagnosisStartSchema.safeParse(await json(await fetchRequest(`/api/diagnoses/${id}`, {
     headers: { accept: "application/json" },
   })));
   if (!parsed.success) throw new RunRequestError("invalid_response", "ZapFix returned invalid diagnosis data.");
   return parsed.data;
+}
+
+export async function decideProposal(
+  id: string,
+  decision: "rejected" | "exited",
+  fetchRequest: FetchRunRequest = fetch,
+): Promise<void> {
+  await json(await fetchRequest(`/api/proposals/${id}/decision`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ decision }),
+  }));
+}
+
+export async function confirmProposal(
+  id: string,
+  input: { selectedOptionId?: string; expectedConfigVersion: number; summaryHash: string },
+  fetchRequest: FetchRunRequest = fetch,
+): Promise<ConfirmResult> {
+  const parsed = ConfirmResultSchema.safeParse(await json(await fetchRequest(`/api/proposals/${id}/confirm`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  })));
+  if (!parsed.success) throw new RunRequestError("invalid_response", "ZapFix returned invalid confirmation data.");
+  return parsed.data;
+}
+
+export async function recordSummaryViewed(id: string, fetchRequest: FetchRunRequest = fetch): Promise<void> {
+  await json(await fetchRequest("/api/events", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ type: "summary_viewed", runId: id }),
+  }));
 }
 
 export async function recordFailureOpened(id: string, fetchRequest: FetchRunRequest = fetch): Promise<void> {

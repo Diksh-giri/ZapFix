@@ -79,6 +79,8 @@ export interface ProposalStore {
   audit: AuditStore;
   /** A plain read (no locks) of a proposal the user owns, for showing it. Undefined if unknown or not theirs. */
   getContext(proposalId: string, userId: string): Promise<ProposalContext | undefined>;
+  /** Ownership-scoped read used by the polled diagnosis view. */
+  getContextByDiagnosis(diagnosisId: string, userId: string): Promise<ProposalContext | undefined>;
   /**
    * In ONE step: mark every still-pending proposal of the workflow `superseded`, then save `draft`
    * as the new pending proposal (when there is one). A new diagnosis retires the old proposal even
