@@ -1,9 +1,9 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { chromium, type FullConfig } from "@playwright/test";
 import { loadEnvConfig } from "@next/env";
 import { createClient } from "@supabase/supabase-js";
-import { resetE2eWorkflows, seedCalendarWorkflow } from "./support/seed";
+import { seedCalendarWorkflow } from "./support/seed";
 
 const STATE_DIR = path.join(process.cwd(), "tests", "e2e", ".state");
 
@@ -34,7 +34,6 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
     throw new Error(`Could not authenticate the dedicated E2E account: ${error?.message ?? "missing user"}`);
   }
 
-  await resetE2eWorkflows(data.user.id);
   const scenarios = {
     recovery: await seedCalendarWorkflow(data.user.id),
     rejection: await seedCalendarWorkflow(data.user.id),
@@ -42,7 +41,8 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
   };
   await supabase.auth.signOut();
 
-  mkdirSync(STATE_DIR, { recursive: true });
+  mkdirSync(STATE_DIR, { recursive: true, mode: 0o700 });
+  chmodSync(STATE_DIR, 0o700);
   writeFileSync(path.join(STATE_DIR, "scenarios.json"), JSON.stringify(scenarios), { mode: 0o600 });
 
   const baseURL = String(config.projects[0]?.use.baseURL ?? "http://localhost:3000");
@@ -53,6 +53,8 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL(/\/workflows$/);
-  await page.context().storageState({ path: path.join(STATE_DIR, "auth.json") });
+  const authPath = path.join(STATE_DIR, "auth.json");
+  await page.context().storageState({ path: authPath });
+  chmodSync(authPath, 0o600);
   await browser.close();
 }

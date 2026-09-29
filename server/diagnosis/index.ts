@@ -4,6 +4,7 @@ import { auditStore } from "@/server/audit";
 import { createAnthropicClient, aiTimeoutMs } from "./ai/client";
 import { getProposalStore } from "@/server/proposals";
 import { createDrizzleDiagnosisStore } from "./drizzle-store";
+import { e2eFixtureModeEnabled } from "@/server/e2e-fixture-mode";
 // T29: no live AI calls in e2e mode either -- see tests/e2e/support/fixture-ai-client.ts. No
 // side effect at import time; only used when E2E_FIXTURE_ADAPTERS=1.
 import { fixtureAiClient } from "../../tests/e2e/support/fixture-ai-client";
@@ -16,7 +17,7 @@ export const diagnosisDeps = () => ({
   store: getDiagnosisStore(),
   proposals: getProposalStore(),
   audit: auditStore(),
-  aiClient: process.env.E2E_FIXTURE_ADAPTERS === "1" ? fixtureAiClient : createAnthropicClient(),
+  aiClient: e2eFixtureModeEnabled() ? fixtureAiClient : createAnthropicClient(),
   now: () => new Date(),
   timeoutMs: aiTimeoutMs(),
   model: process.env.AI_MODEL?.trim() || null,

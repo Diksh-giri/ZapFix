@@ -1,4 +1,4 @@
-import { and, eq, like } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "@/db/schema";
@@ -133,14 +133,6 @@ export async function seedCalendarWorkflow(userId: string): Promise<SeededCalend
   if (!workflow) throw new Error("Could not create the e2e Calendar workflow.");
 
   return { workflowId: workflow.id, connectionId };
-}
-
-/** Removes only workflows created by this E2E harness for its dedicated user. */
-export async function resetE2eWorkflows(userId: string): Promise<void> {
-  const db = client();
-  await db
-    .delete(workflows)
-    .where(and(eq(workflows.userId, userId), like(workflows.name, "e2e:%")));
 }
 
 export async function seedSlackConnection(userId: string): Promise<{ connectionId: string }> {

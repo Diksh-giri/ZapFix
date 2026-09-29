@@ -56,9 +56,9 @@ At sign-in ZapFix checks the password with Supabase first, then the invite. A wr
 
 The Playwright suite requires a dedicated invited Supabase user that has never connected a real
 Google or Slack account. Set `E2E_TEST_EMAIL`, `E2E_TEST_PASSWORD`, and `CONFIRM_E2E=yes` in
-`.env.local`. Setup deletes only that user's `e2e:%` workflows, seeds fake encrypted tokens, and
-starts the app with recorded external-app and AI fixtures; it never calls Google, Slack, or
-Anthropic.
+`.env.local`. Setup seeds uniquely identified workflows and fake encrypted tokens for that account,
+then starts the app with recorded external-app and AI fixtures; it never calls Google, Slack, or
+Anthropic. Test records are retained because approval and change history is intentionally immutable.
 
 ## Current project state
 
