@@ -4,6 +4,8 @@ Use one copy of this scorecard per moderated session. It maps observed behavior 
 
 Use a non-identifying participant code. Do not record credentials, tokens, raw workflow values, customer data, or unnecessary personal information.
 
+Do not administer or store a completed scorecard until both owners approve the consent and study-data handling plan required by `docs/USABILITY_TEST_KIT.md`. Never commit a completed scorecard to this repository.
+
 ## Session record
 
 - Participant code:
@@ -12,10 +14,28 @@ Use a non-identifying participant code. Do not record credentials, tokens, raw w
 - Observer code, if present:
 - Scenario identifier:
 - Starting workflow configuration verified: Yes / No
-- Integration mode: Live test integration / Recorded-fixture fallback
+- Cohort: Live test / Recorded fixture
+- Workflow ID:
+- Run ID:
+- Diagnosis ID:
+- Proposal ID:
+- Approval ID, when created:
+- Configuration change ID, when created:
+- Fresh run and proposal created for this participant: Yes / No / Fixture cohort
 - Session completed: Yes / No
 - Technical interruption occurred: Yes / No
 - If interrupted, describe the product state without sensitive data:
+
+## Cohort and eligibility rules
+
+Assign the cohort before the session begins and do not change it to improve results.
+
+- Live test sessions may contribute to all applicable PRD targets when their record identifiers can be reconciled with product data.
+- Recorded-fixture sessions may contribute only to failure understanding and clarity.
+- Report live and fixture results separately, including their denominators.
+- Include every eligible session that began the participant scenario in the failure-understanding denominator. Inability to navigate to or explain the failure counts as an unsuccessful explanation, not an exclusion.
+- Predeclare exclusions before reviewing results. Valid exclusions are participant withdrawal, a safety stop, or a verified infrastructure failure that prevents the scenario from starting. Record every exclusion and its reason.
+- Product failures after the scenario begins are study outcomes and must not be removed from the primary started-session result. They may also be reported separately as technical interruptions.
 
 ## Task outcomes
 
@@ -68,7 +88,7 @@ The repository's decision-time query measures from the first `failure_opened` ev
 - Counts as a correct explanation for the aggregate target: Yes / No
 - Supporting participant quote or observation:
 
-Count the participant as correct only when both the failed step and likely cause are explained correctly. Report the number of correct explanations divided by the number of participants who reached this task. Keep assisted completion visible in the study notes.
+Count the participant as correct only when both the failed step and likely cause are explained correctly. The primary denominator is every eligible session that began the participant scenario. A participant who cannot reach or explain the failure counts as unsuccessful. Report assisted completion separately and list every predeclared exclusion with its reason.
 
 ### 2 Decision time
 
@@ -115,7 +135,7 @@ Use the saved `approvals_with_change` query for the aggregate. Its applied-chang
 - Unexpected or unapproved change observed during this session: Yes / No
 - If yes, stop testing and record the issue without sensitive values:
 
-Use the saved `unapproved_changes` query for the aggregate. A passing result returns no workflow rows.
+The saved `unapproved_changes` query is a limited diagnostic, not proof of this target: a prior recorded change or a later user edit can hide an unrecorded debugger mutation. Run it as a warning check, but report the target as **not fully measurable with the current audit model** unless every debugger mutation in the study cohort can be reconciled to an append-only approval and configuration-change record. Do not infer zero unapproved changes from an empty query result.
 
 ### 7 Clarity
 
@@ -133,7 +153,7 @@ Average item 9 from `docs/USABILITY_PARTICIPANT_SURVEY.md` across completed resp
 - Configuration change shows restored state: Yes / No / Not applicable
 - Notes:
 
-Use the saved `restore_success` query for the aggregate. Review `restores_started`, `restores_finished`, and restored configuration-change counts together; investigate any mismatch before reporting the target.
+Use the saved `restore_success` query together with the per-session scorecards. The server gives each restore request a unique `restore_attempt_id`, and the query matches its started and finished events to the same user, run, configuration change and attempt. Restrict both query CTEs to the live study window before reporting the cohort. If an attempt cannot be correlated to a completion, report it as unsuccessful or unresolved rather than assuming success.
 
 ## Diagnostic observations
 
@@ -150,18 +170,18 @@ These observations help explain usability problems but are not additional PRD su
 
 ## Aggregate reporting worksheet
 
-Complete this only after reviewing all eligible session records and running the saved SQL queries against the approved test database.
+Complete this only after reviewing all eligible session records and running the applicable saved SQL queries against the approved test database. Report live and fixture cohorts separately. Do not combine fixture observations with live operational outcomes.
 
 | Existing PRD target | Result | Sample or denominator | Target met | Evidence source |
 | --- | --- | --- | --- | --- |
-| Correct failure explanation |  |  | At least 80% | Reviewed scorecards |
+| Correct failure explanation |  |  | At least 80% | All eligible started-session scorecards, separated by cohort |
 | Median approve or reject time |  |  | Under 180 seconds | `time_from_failure_to_decision` |
 | Supported-failure recovery |  |  | At least 70% | `recovery_rate` |
 | Retries per resolved failure |  |  | Two or fewer on average | `retries_per_resolved_run` |
 | Applied changes with approval |  |  | 100% | `approvals_with_change` |
-| Unapproved changes |  |  | Zero | `unapproved_changes` |
+| Unapproved changes |  |  | Zero | Per-mutation approval/change reconciliation; `unapproved_changes` is diagnostic only |
 | Clarity rating |  |  | At least 4.0 out of 5 | Participant survey item 9 |
-| Restore success |  |  | 100% | `restore_success` |
+| Restore success |  |  | 100% | Correlated live-cohort `restore_success` results and scorecards |
 
 ## Review sign-off
 
@@ -171,4 +191,3 @@ Complete this only after reviewing all eligible session records and running the 
 - Sensitive information removed from shared notes: Yes / No
 - Session included in aggregate report: Yes / No
 - If excluded, reason:
-

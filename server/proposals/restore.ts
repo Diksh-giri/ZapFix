@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { AppError } from "@/lib/errors";
 import type { ActionConfig } from "@/lib/schemas/workflow-config";
 import { recordEvent } from "@/server/audit/events";
@@ -25,10 +26,11 @@ const NOTE =
  * `restore_started` is kept even when the restore is refused, so started vs finished shows refusals.
  */
 export async function restoreChange(
-  deps: { store: ProposalStore; now: () => Date },
+  deps: { store: ProposalStore; now: () => Date; restoreAttemptId?: () => string },
   input: { changeId: string; userId: string; confirmOverwrite?: boolean },
 ): Promise<RestoreResult> {
   type Outcome = { ok: true; result: RestoreResult } | { ok: false; error: AppError };
+  const restoreAttemptId = deps.restoreAttemptId?.() ?? randomUUID();
 
   const outcome: Outcome = await deps.store.transaction(async (tx): Promise<Outcome> => {
     const ctx = await tx.loadChange(input.changeId);
@@ -39,7 +41,7 @@ export async function restoreChange(
       userId: input.userId,
       runId,
       type: "restore_started",
-      payload: { config_change_id: change.id },
+      payload: { config_change_id: change.id, restore_attempt_id: restoreAttemptId },
     });
 
     if (change.status === "restored") {
@@ -73,7 +75,7 @@ export async function restoreChange(
       userId: input.userId,
       runId,
       type: "restore_finished",
-      payload: { config_change_id: change.id, overwrote },
+      payload: { config_change_id: change.id, restore_attempt_id: restoreAttemptId, overwrote },
     });
 
     return {

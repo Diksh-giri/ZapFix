@@ -90,5 +90,4 @@ Item 9 is the PRD clarity measure. Report its average across completed responses
 
 ## Moderator handling note
 
-Store the completed survey according to the team's approved consent and retention process. If a response contains sensitive information, remove that information before it is copied into a product issue or shared study summary.
-
+Do not administer or store a completed survey until both owners approve the consent and study-data handling plan required by `docs/USABILITY_TEST_KIT.md`. Store and delete it only as that plan permits, and never commit a completed survey to this repository. If a response contains sensitive information, restrict access immediately and follow the plan's accidental-capture procedure before copying any sanitized finding into a product issue or study summary.

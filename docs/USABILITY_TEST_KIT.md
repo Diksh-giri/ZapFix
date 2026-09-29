@@ -37,11 +37,33 @@ Complete these checks before inviting a participant:
 - Prepare one supported, deliberately broken workflow with one trigger and one action.
 - Verify that the selected scenario can reach failure, diagnosis, proposal, approval, retry, and restore states.
 - Confirm the workflow starts from the same configuration for each participant.
+- Create a fresh failed run and diagnosis for each participant. Never reuse another participant's run, diagnosis, or proposal because product events and decisions are tied to those records.
 - Confirm the participant has an active invited ZapFix account.
+- Have the participant sign in privately before observation, screen sharing, screenshots, or any approved recording begins. The moderator must never request, enter, view, repeat, or store the participant's password. Pause all capture if the participant must authenticate again.
 - Confirm the required Google test connection is active. Schedule the session within days of connecting because Google test connections last about seven days.
 - Verify the moderator can restore or reset the scenario between sessions.
 - Prepare a backup fixture-based session if the live test integration is unavailable. Tell the participant when integration behavior is simulated.
 - Open the observer scorecard before the session and assign one timekeeper when a separate observer is available.
+
+Assign each session to one cohort before it begins:
+
+- **Live test cohort:** Uses a fresh real test run and may contribute to all applicable PRD targets.
+- **Fixture cohort:** Uses recorded responses and may contribute only to failure understanding and clarity. It must not be included in decision-time, recovery, retry, approval-integrity, unapproved-change, or restore aggregates.
+
+Report the cohorts separately. A fixture session is a fallback for evaluating comprehension and interface wording, not evidence that the live recovery system worked.
+
+### Consent and study data gate
+
+Do not schedule or run a participant session until both owners approve a written consent and study-data handling plan. The plan must name:
+
+- The study-data owner.
+- The approved storage location and who may access it.
+- Which artifacts may be collected: structured notes, surveys, screenshots, audio, video, or screen recordings.
+- The retention period and deletion date for each artifact type.
+- How a participant can decline recording, withdraw, or request deletion.
+- How accidental capture of credentials, customer data, or other sensitive content will be quarantined and permanently deleted.
+
+The repository does not currently contain that approved plan, and its general data-retention period remains an open decision. Therefore, this kit does **not** authorize audio, video, screenshots, or screen recording. Until the plan exists, do not conduct a participant session or store completed participant materials.
 
 Do not run a session until the complete scenario has passed an internal smoke test. If the product cannot safely reach the approval, retry, or restore state, reschedule rather than improvising around a broken flow.
 
@@ -59,7 +81,7 @@ Confirm that the participant understands:
 - Retry may call the connected test application.
 - Restore reverts ZapFix workflow settings and does not undo actions already performed in an external application.
 
-Stop the session if real customer data, credentials, tokens, or another person's account appears. Do not copy sensitive content into notes, recordings, screenshots, or issue reports.
+Stop the session if real customer data, credentials, tokens, or another person's account appears. Stop any active capture immediately, restrict access to the accidental artifact, notify the study-data owner, and follow the approved handling plan to delete it permanently. Do not copy sensitive content into notes, recordings, screenshots, or issue reports.
 
 ## Moderator guidance
 
@@ -85,12 +107,12 @@ If the participant is blocked, wait before offering help. Record the point of fa
 
 Plan approximately 30 to 40 minutes:
 
-1. Welcome, consent, and safety briefing: 5 minutes.
+1. Confirm documented consent, then give the safety briefing: 5 minutes.
 2. Background questions: 5 minutes.
 3. Scenario and task sequence: 15 to 20 minutes.
 4. Post-task survey and debrief: 5 to 10 minutes.
 
-The moderator may end the session early for a safety concern, an unrecoverable product failure, or participant withdrawal. Record why the session ended; do not treat an incomplete product session as participant failure.
+The moderator may end the session early for a safety concern, an unrecoverable product failure, or participant withdrawal. Record why the session ended. Never frame an incomplete session as the participant's fault; when the scenario already began, record a product failure as an unsuccessful product outcome in the primary started-session result.
 
 ## Pre-session questions
 
@@ -108,7 +130,7 @@ Give the participant this scenario without naming the expected error category or
 
 > You manage a workflow that takes information entered in a form and creates an event in a test Google Calendar. A recent test run failed. You want to understand what happened, decide whether ZapFix's recommendation is safe, and determine whether the workflow can run successfully. Work as you normally would. You may approve, reject, or leave the recommendation based on the information you see.
 
-Use a supported Calendar failure that has been internally verified before the session. The same scenario and starting configuration should be used for every participant in a comparable round.
+Use a supported Calendar failure that has been internally verified before the session. The same scenario and starting configuration should be used for every participant in a comparable round, but create a fresh run, diagnosis, and proposal for each participant. Record their identifiers in the scorecard so database results can be reconciled to the correct session.
 
 ## Participant task sheet
 
@@ -253,14 +275,17 @@ After the participant leaves:
 3. Label the session record with a non-identifying participant code.
 4. Separate product defects from usability observations.
 5. Record assisted tasks and technical interruptions before calculating results.
-6. Store notes and any recording according to the team's agreed consent and retention process.
+6. Store or delete session materials according to the approved consent and study-data handling plan. Never commit completed participant materials to this repository.
 
 Do not report PRD targets as achieved until completed session records have been reviewed and calculated using the T30 measurement materials.
 
 ## Moderator completion checklist
 
 - [ ] Participant matches the intended profile.
-- [ ] Consent and recording choice captured through the team's approved process.
+- [ ] Written consent and study-data handling plan approved by both owners.
+- [ ] Participant consent recorded through the approved process.
+- [ ] Participant signed in privately before observation or capture began.
+- [ ] No recording or screenshots used unless the approved plan explicitly permits them.
 - [ ] Test account and supported failure verified.
 - [ ] Safety briefing read.
 - [ ] Pre-session questions completed.
@@ -270,4 +295,4 @@ Do not report PRD targets as achieved until completed session records have been 
 - [ ] Post-task survey completed.
 - [ ] Workflow and external test data reset.
 - [ ] Notes contain no secrets, credentials, or unnecessary personal information.
-
+- [ ] Session materials stored or deleted according to the approved plan and deletion date.

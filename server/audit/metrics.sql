@@ -8,7 +8,9 @@ from config_changes c
 join approvals a on a.id = c.approval_id;
 
 -- name: unapproved_changes
--- Workflows last modified by the debugger with no recorded change. Should return no rows.
+-- Diagnostic only: workflows currently marked as debugger-modified with no change record.
+-- An empty result cannot prove that zero unapproved changes occurred historically because workflows
+-- do not have an append-only mutation log. Do not use this query alone to claim the PRD target.
 select w.id as workflow_id
 from workflows w
 where w.last_modified_by = 'debugger'
@@ -64,7 +66,34 @@ from (
 ) t;
 
 -- name: restore_success
--- Restores started and finished, and how many changes are now in the restored state. Target 100 percent.
-select (select count(*) from events where type = 'restore_started') as restores_started,
-       (select count(*) from events where type = 'restore_finished') as restores_finished,
-       (select count(*) from config_changes where status = 'restored') as changes_restored;
+-- Committed restore attempts correlated by the server-generated attempt id. Target 100 percent.
+-- Optionally add the same created_at study-window filter to both CTEs before reporting a cohort.
+with started as (
+  select user_id,
+         run_id,
+         payload ->> 'restore_attempt_id' as restore_attempt_id,
+         payload ->> 'config_change_id' as config_change_id,
+         created_at
+  from events
+  where type = 'restore_started'
+    and payload ->> 'restore_attempt_id' is not null
+),
+finished as (
+  select user_id,
+         run_id,
+         payload ->> 'restore_attempt_id' as restore_attempt_id,
+         payload ->> 'config_change_id' as config_change_id,
+         created_at
+  from events
+  where type = 'restore_finished'
+    and payload ->> 'restore_attempt_id' is not null
+)
+select count(*) as restores_started,
+       count(f.restore_attempt_id) as restores_finished,
+       round(100.0 * count(f.restore_attempt_id) / nullif(count(*), 0), 1) as restore_success_pct
+from started s
+left join finished f
+  on f.user_id = s.user_id
+ and f.run_id is not distinct from s.run_id
+ and f.restore_attempt_id = s.restore_attempt_id
+ and f.config_change_id = s.config_change_id;
