@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The email address provided for the attendee is not in a valid email format.",
+  "explanation": "The system rejected the attendee email because it doesn't match the expected format for an email address. This could happen if the email is missing an @ symbol, has spaces, contains invalid characters, or is otherwise malformed.",
+  "selected_candidate_id": null,
+  "why_this_fix": "No candidate fixes were provided. You may need to check that the email address is complete and correctly formatted before trying again.",
+  "confidence": "low",
+  "uncertainty_note": "Without seeing the actual email value or having candidate fixes available, it's unclear whether this is a formatting issue, a data mapping problem, or something else entirely."
+}
+```

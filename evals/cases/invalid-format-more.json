@@ -1,0 +1,54 @@
+[
+  {
+    "id": "calendar-unambiguous-iso-date-one-valid-format",
+    "note": "Same real Calendar badRequest as invalid_date_format.json, but the value is YYYY-MM-DD, which only has one valid reading.",
+    "input": {
+      "error": { "category_hint": "invalid_value", "code": "badRequest", "message": "Bad Request", "field": "start", "retryable": false, "outcome": "not_executed" },
+      "config": { "start": { "kind": "mapped", "source": "date" } },
+      "resolved": { "start": "2026-03-15" },
+      "triggerData": { "date": "2026-03-15" },
+      "triggerSchema": { "fields": [{ "key": "date", "label": "Date", "type": "date" }] },
+      "actionFields": [{ "key": "start", "label": "Start", "required": true, "type": "datetime_rfc3339" }]
+    },
+    "expected": { "category": "invalid_format", "supported": true, "candidateIds": ["transform:start:YYYY-MM-DD"], "ceiling": "high" }
+  },
+  {
+    "id": "calendar-slash-date-unambiguous-as-day-first",
+    "note": "15 cannot be a month, so only the DD/MM/YYYY reading is a real date -- unlike the ambiguous 03/04/2026 case, this one has exactly one valid candidate.",
+    "input": {
+      "error": { "category_hint": "invalid_value", "code": "badRequest", "message": "Bad Request", "field": "start", "retryable": false, "outcome": "not_executed" },
+      "config": { "start": { "kind": "mapped", "source": "date" } },
+      "resolved": { "start": "15/03/2026" },
+      "triggerData": { "date": "15/03/2026" },
+      "triggerSchema": { "fields": [{ "key": "date", "label": "Date", "type": "date" }] },
+      "actionFields": [{ "key": "start", "label": "Start", "required": true, "type": "datetime_rfc3339" }]
+    },
+    "expected": { "category": "invalid_format", "supported": true, "candidateIds": ["transform:start:DD/MM/YYYY"], "ceiling": "high" }
+  },
+  {
+    "id": "calendar-slash-date-not-real-under-either-reading",
+    "note": "13/13/2026 is not a valid date as MM/DD or DD/MM (no month 13), so no transform can safely fix it and no fix is offered.",
+    "input": {
+      "error": { "category_hint": "invalid_value", "code": "badRequest", "message": "Bad Request", "field": "start", "retryable": false, "outcome": "not_executed" },
+      "config": { "start": { "kind": "mapped", "source": "date" } },
+      "resolved": { "start": "13/13/2026" },
+      "triggerData": { "date": "13/13/2026" },
+      "triggerSchema": { "fields": [{ "key": "date", "label": "Date", "type": "date" }] },
+      "actionFields": [{ "key": "start", "label": "Start", "required": true, "type": "datetime_rfc3339" }]
+    },
+    "expected": { "category": "invalid_format", "supported": true, "candidateIds": [], "ceiling": "low" }
+  },
+  {
+    "id": "calendar-end-date-wrong-format",
+    "note": "Same real error shape applied to the End field instead of Start, to confirm the rule is field-agnostic.",
+    "input": {
+      "error": { "category_hint": "invalid_value", "code": "badRequest", "message": "Bad Request", "field": "end", "retryable": false, "outcome": "not_executed" },
+      "config": { "end": { "kind": "mapped", "source": "finish_date" } },
+      "resolved": { "end": "04/20/2026" },
+      "triggerData": { "finish_date": "04/20/2026" },
+      "triggerSchema": { "fields": [{ "key": "finish_date", "label": "Finish date", "type": "date" }] },
+      "actionFields": [{ "key": "end", "label": "End", "required": true, "type": "datetime_rfc3339" }]
+    },
+    "expected": { "category": "invalid_format", "supported": true, "candidateIds": ["transform:end:MM/DD/YYYY"], "ceiling": "high" }
+  }
+]

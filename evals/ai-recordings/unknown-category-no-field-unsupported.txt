@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The workflow step performed an action that is not supported by the system.",
+  "explanation": "The step tried to do something the system cannot handle. The error message is vague, so the exact problem is unclear. This could be a limitation of the workflow tool, an unsupported configuration, or an operation that is not allowed.",
+  "selected_candidate_id": null,
+  "why_this_fix": "No candidate fixes were provided to choose from, and the vague error message makes it impossible to recommend a specific solution without more information.",
+  "confidence": "low",
+  "uncertainty_note": "The error details are too generic to pinpoint the cause. Without knowing which fields were involved or what the step was attempting, any recommendation would be a guess."
+}
+```

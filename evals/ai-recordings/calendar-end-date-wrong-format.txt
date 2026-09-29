@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The end date is in the wrong format for the system to process.",
+  "explanation": "The workflow tried to send an end date from your trigger field (finish_date) but the system rejected it because the date format didn't match what was expected. The field is set up to use MM/DD/YYYY format, but the system that received it needs a different format.",
+  "selected_candidate_id": "transform:end:MM/DD/YYYY",
+  "why_this_fix": "This candidate converts the date format from MM/DD/YYYY to the standard format the system requires, which may resolve the format mismatch.",
+  "confidence": "high",
+  "uncertainty_note": null
+}
+```

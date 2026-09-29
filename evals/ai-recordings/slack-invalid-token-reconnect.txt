@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The Slack connection has expired and needs to be refreshed.",
+  "explanation": "The system tried to send a message to Slack, but the connection is no longer valid. This happens when the authorization to access Slack has timed out or been revoked. The workflow cannot proceed until the connection is restored.",
+  "selected_candidate_id": "reconnect",
+  "why_this_fix": "Reconnecting the Slack app will refresh the authorization and restore the ability to send messages to Slack.",
+  "confidence": "high",
+  "uncertainty_note": null
+}
+```

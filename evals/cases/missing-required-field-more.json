@@ -1,0 +1,124 @@
+[
+  {
+    "id": "calendar-empty-attendee-email-one-alternative",
+    "note": "From the REAL Calendar response for an empty attendee email (tests/fixtures/google-calendar/empty_attendee_email.json).",
+    "input": {
+      "error": { "category_hint": "missing_field", "code": "invalid", "message": "Invalid attendee email.", "field": "attendee_email", "retryable": false, "outcome": "not_executed" },
+      "config": {
+        "title": { "kind": "mapped", "source": "topic" },
+        "start": { "kind": "static", "value": "2030-06-15T10:00:00Z" },
+        "end": { "kind": "static", "value": "2030-06-15T11:00:00Z" },
+        "attendee_email": { "kind": "mapped", "source": "email" }
+      },
+      "resolved": { "title": "Kickoff", "start": "2030-06-15T10:00:00Z", "end": "2030-06-15T11:00:00Z", "attendee_email": "" },
+      "triggerData": { "topic": "Kickoff", "email": "", "contact_email": "ana@example.com" },
+      "triggerSchema": {
+        "fields": [
+          { "key": "topic", "label": "Topic", "type": "text" },
+          { "key": "email", "label": "Email", "type": "email" },
+          { "key": "contact_email", "label": "Contact email", "type": "email" }
+        ]
+      },
+      "actionFields": [
+        { "key": "title", "label": "Title", "required": true, "type": "text" },
+        { "key": "start", "label": "Start", "required": true, "type": "datetime_rfc3339" },
+        { "key": "end", "label": "End", "required": true, "type": "datetime_rfc3339" },
+        { "key": "attendee_email", "label": "Attendee email", "required": true, "type": "email" }
+      ]
+    },
+    "expected": { "category": "missing_required_field", "supported": true, "candidateIds": ["map:attendee_email:contact_email"], "ceiling": "high" }
+  },
+  {
+    "id": "slack-empty-channel-no-alternative",
+    "note": "From the REAL Slack response for an empty channel (tests/fixtures/slack/empty_channel.json). No other text field to try, so no fix -- the user must pick a channel by hand.",
+    "input": {
+      "error": { "category_hint": "missing_field", "code": "channel_not_found", "message": "Slack could not find that channel.", "field": "channel", "retryable": false, "outcome": "not_executed" },
+      "config": {
+        "channel": { "kind": "mapped", "source": "destination" },
+        "text": { "kind": "static", "value": "Deploy finished" }
+      },
+      "resolved": { "channel": "", "text": "Deploy finished" },
+      "triggerData": { "destination": "" },
+      "triggerSchema": { "fields": [{ "key": "destination", "label": "Destination", "type": "text" }] },
+      "actionFields": [
+        { "key": "channel", "label": "Channel", "required": true, "type": "text" },
+        { "key": "text", "label": "Message", "required": true, "type": "text" }
+      ]
+    },
+    "expected": { "category": "missing_required_field", "supported": true, "candidateIds": [], "ceiling": "low" }
+  },
+  {
+    "id": "gmail-empty-recipient-no-alternative",
+    "note": "From the REAL Gmail response for an empty To (tests/fixtures/gmail/empty_to.json). No other email field in the trigger, so no fix is offered.",
+    "input": {
+      "error": { "category_hint": "missing_field", "code": "invalidArgument", "message": "Recipient address required", "field": "to", "retryable": false, "outcome": "not_executed" },
+      "config": {
+        "to": { "kind": "mapped", "source": "email" },
+        "subject": { "kind": "static", "value": "Hello" },
+        "body": { "kind": "static", "value": "Hi there" }
+      },
+      "resolved": { "to": "", "subject": "Hello", "body": "Hi there" },
+      "triggerData": { "email": "" },
+      "triggerSchema": { "fields": [{ "key": "email", "label": "Email", "type": "email" }] },
+      "actionFields": [
+        { "key": "to", "label": "To", "required": true, "type": "email" },
+        { "key": "subject", "label": "Subject", "required": true, "type": "text" },
+        { "key": "body", "label": "Message", "required": true, "type": "text" }
+      ]
+    },
+    "expected": { "category": "missing_required_field", "supported": true, "candidateIds": [], "ceiling": "low" }
+  },
+  {
+    "id": "drive-empty-name-two-alternatives",
+    "note": "From the REAL Drive response for an empty file name (tests/fixtures/google-drive/empty_name.json). Two other text fields have values, so the user picks between them.",
+    "input": {
+      "error": { "category_hint": "missing_field", "code": "missing_required_field", "message": "The file name is empty.", "field": "name", "retryable": false, "outcome": "not_executed" },
+      "config": {
+        "name": { "kind": "mapped", "source": "title" },
+        "content": { "kind": "static", "value": "hello" }
+      },
+      "resolved": { "name": "", "content": "hello" },
+      "triggerData": { "title": "", "filename": "notes.txt", "backup_name": "notes-backup.txt" },
+      "triggerSchema": {
+        "fields": [
+          { "key": "title", "label": "Title", "type": "text" },
+          { "key": "filename", "label": "File name", "type": "text" },
+          { "key": "backup_name", "label": "Backup name", "type": "text" }
+        ]
+      },
+      "actionFields": [
+        { "key": "name", "label": "File name", "required": true, "type": "text" },
+        { "key": "content", "label": "Content", "required": false, "type": "text" }
+      ]
+    },
+    "expected": { "category": "missing_required_field", "supported": true, "candidateIds": ["map:name:filename", "map:name:backup_name"], "ceiling": "medium" }
+  },
+  {
+    "id": "calendar-empty-title-one-alternative",
+    "note": "Same real missing-field shape as the attendee-email fixture, applied to the Title field to cover a second field on the same real app.",
+    "input": {
+      "error": { "category_hint": "missing_field", "code": "invalid", "message": "Missing event title.", "field": "title", "retryable": false, "outcome": "not_executed" },
+      "config": {
+        "title": { "kind": "mapped", "source": "topic" },
+        "start": { "kind": "static", "value": "2030-06-15T10:00:00Z" },
+        "end": { "kind": "static", "value": "2030-06-15T11:00:00Z" },
+        "attendee_email": { "kind": "static", "value": "test@example.com" }
+      },
+      "resolved": { "title": "", "start": "2030-06-15T10:00:00Z", "end": "2030-06-15T11:00:00Z", "attendee_email": "test@example.com" },
+      "triggerData": { "topic": "", "headline": "Weekly sync" },
+      "triggerSchema": {
+        "fields": [
+          { "key": "topic", "label": "Topic", "type": "text" },
+          { "key": "headline", "label": "Headline", "type": "text" }
+        ]
+      },
+      "actionFields": [
+        { "key": "title", "label": "Title", "required": true, "type": "text" },
+        { "key": "start", "label": "Start", "required": true, "type": "datetime_rfc3339" },
+        { "key": "end", "label": "End", "required": true, "type": "datetime_rfc3339" },
+        { "key": "attendee_email", "label": "Attendee email", "required": true, "type": "email" }
+      ]
+    },
+    "expected": { "category": "missing_required_field", "supported": true, "candidateIds": ["map:title:headline"], "ceiling": "high" }
+  }
+]

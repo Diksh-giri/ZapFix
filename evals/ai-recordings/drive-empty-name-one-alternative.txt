@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The file name field is empty because it's trying to use a trigger field called \"title\" that has no value.",
+  "explanation": "The workflow tried to create or process a file, but the name field ended up empty. The system is currently set to get the file name from a trigger field called \"title\", but that field didn't contain anything when the workflow ran.",
+  "selected_candidate_id": "map:name:filename",
+  "why_this_fix": "This may fix it by changing where the file name comes from. Instead of using the empty \"title\" field, it would use a \"File name\" field that may have a value.",
+  "confidence": "high",
+  "uncertainty_note": null
+}
+```

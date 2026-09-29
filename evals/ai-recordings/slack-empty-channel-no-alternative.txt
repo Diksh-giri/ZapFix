@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The channel field is empty, so Slack cannot find where to send the message.",
+  "explanation": "The workflow tried to send a message to Slack, but the channel name or ID was not provided. The channel field came from a trigger field called \"destination\", which appears to be empty. Without knowing which channel to use, Slack cannot complete the action.",
+  "selected_candidate_id": null,
+  "why_this_fix": "No candidate fixes were provided. To resolve this, you would need to ensure the \"destination\" trigger field has a valid Slack channel name or ID before the workflow runs.",
+  "confidence": "low",
+  "uncertainty_note": "I cannot determine what value should be in the destination field or why it became empty. It may be a configuration issue, missing data from the trigger, or the field needs to be mapped differently."
+}
+```

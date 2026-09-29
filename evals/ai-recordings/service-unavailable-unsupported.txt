@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The service encountered an internal problem and could not complete the workflow step.",
+  "explanation": "The backend service reported an internal error, meaning something went wrong on the server side when processing your request. This is not caused by incorrect input or settings on your end. The service itself had a technical issue that prevented it from working properly.",
+  "selected_candidate_id": null,
+  "why_this_fix": "No candidate fixes were provided to choose from. This type of internal error typically requires the service provider to investigate and fix the underlying issue.",
+  "confidence": "low",
+  "uncertainty_note": "Without more details about what the service was trying to do or error logs, it is unclear what caused the internal error or whether retrying might help."
+}
+```

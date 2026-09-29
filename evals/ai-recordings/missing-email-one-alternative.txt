@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The field being used to fill attendee email is empty, so no email address was provided.",
+  "explanation": "The workflow tried to use the trigger field called 'email' for the attendee email, but that field is empty. Without an email address, the system cannot proceed because attendee email is required.",
+  "selected_candidate_id": "map:attendee_email:contact_email",
+  "why_this_fix": "Using 'Contact email' instead may fix it if that field contains the email address, while the original email field is empty.",
+  "confidence": "high",
+  "uncertainty_note": null
+}
+```

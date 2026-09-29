@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The workflow sent too many requests to a service in a short time and hit its rate limit.",
+  "explanation": "A service that the workflow relies on has a limit on how many requests it can handle in a given period. The workflow exceeded that limit, so the service rejected the request. This is a temporary problem—waiting and trying again later should work.",
+  "selected_candidate_id": null,
+  "why_this_fix": "No candidates were provided. The fix would typically involve adding delays between requests, reducing the number of parallel requests, or contacting the service provider about your usage limits.",
+  "confidence": "low",
+  "uncertainty_note": "Without knowing which service is rate-limiting or how the workflow makes requests, I cannot recommend a specific fix from the available options. The candidates list is empty."
+}
+```

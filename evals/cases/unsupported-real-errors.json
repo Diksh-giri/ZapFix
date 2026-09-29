@@ -1,0 +1,96 @@
+[
+  {
+    "id": "slack-unknown-channel-unsupported",
+    "note": "From the REAL Slack response for a channel that does not exist (tests/fixtures/slack/unknown_channel.json). category_hint is not_found, which no rule handles -- correctly no fix.",
+    "input": {
+      "error": { "category_hint": "not_found", "code": "channel_not_found", "message": "Slack could not find that channel.", "field": "channel", "retryable": false, "outcome": "not_executed" },
+      "config": { "channel": { "kind": "static", "value": "#does-not-exist" }, "text": { "kind": "static", "value": "hi" } },
+      "resolved": { "channel": "#does-not-exist", "text": "hi" },
+      "triggerData": {},
+      "triggerSchema": { "fields": [] },
+      "actionFields": [
+        { "key": "channel", "label": "Channel", "required": true, "type": "text" },
+        { "key": "text", "label": "Message", "required": true, "type": "text" }
+      ]
+    },
+    "expected": { "category": "unsupported", "supported": false, "candidateIds": [], "ceiling": "low" }
+  },
+  {
+    "id": "rate-limited-unsupported",
+    "note": "A rate-limit response has nothing for a rule to fix -- retrying later is the only real remedy, which is outside the debugger's allowed fix list.",
+    "input": {
+      "error": { "category_hint": "rate_limit", "code": "rate_limited", "message": "Too many requests. Try again later.", "retryable": true, "outcome": "not_executed" },
+      "config": {},
+      "resolved": {},
+      "triggerData": {},
+      "triggerSchema": { "fields": [] },
+      "actionFields": []
+    },
+    "expected": { "category": "unsupported", "supported": false, "candidateIds": [], "ceiling": "low" }
+  },
+  {
+    "id": "service-unavailable-unsupported",
+    "note": "The app itself is down; nothing about the workflow's configuration is wrong.",
+    "input": {
+      "error": { "category_hint": "unavailable", "code": "backend_error", "message": "The service had an internal error.", "retryable": true, "outcome": "uncertain" },
+      "config": {},
+      "resolved": {},
+      "triggerData": {},
+      "triggerSchema": { "fields": [] },
+      "actionFields": []
+    },
+    "expected": { "category": "unsupported", "supported": false, "candidateIds": [], "ceiling": "low" }
+  },
+  {
+    "id": "unknown-category-no-field-unsupported",
+    "note": "category_hint unknown, with no field named -- there is nothing specific enough for any rule to act on.",
+    "input": {
+      "error": { "category_hint": "unknown", "code": "internal", "message": "Something went wrong.", "retryable": false, "outcome": "failed" },
+      "config": {},
+      "resolved": {},
+      "triggerData": {},
+      "triggerSchema": { "fields": [] },
+      "actionFields": []
+    },
+    "expected": { "category": "unsupported", "supported": false, "candidateIds": [], "ceiling": "low" }
+  },
+  {
+    "id": "invalid-value-no-field-named-unsupported",
+    "note": "category_hint invalid_value but the app did not say which field, so the invalid-format rule (which requires error.field) does not match.",
+    "input": {
+      "error": { "category_hint": "invalid_value", "code": "badRequest", "message": "Bad Request", "retryable": false, "outcome": "not_executed" },
+      "config": { "start": { "kind": "mapped", "source": "date" } },
+      "resolved": { "start": "03/15/2026" },
+      "triggerData": { "date": "03/15/2026" },
+      "triggerSchema": { "fields": [{ "key": "date", "label": "Date", "type": "date" }] },
+      "actionFields": [{ "key": "start", "label": "Start", "required": true, "type": "datetime_rfc3339" }]
+    },
+    "expected": { "category": "unsupported", "supported": false, "candidateIds": [], "ceiling": "low" }
+  },
+  {
+    "id": "missing-field-no-field-named-unsupported",
+    "note": "category_hint missing_field but the app did not say which field, so the missing-field rule (which requires error.field) does not match.",
+    "input": {
+      "error": { "category_hint": "missing_field", "code": "validation_failed", "message": "A required value is missing.", "retryable": false, "outcome": "not_executed" },
+      "config": { "attendee_email": { "kind": "mapped", "source": "email" } },
+      "resolved": { "attendee_email": "" },
+      "triggerData": { "email": "" },
+      "triggerSchema": { "fields": [{ "key": "email", "label": "Email", "type": "email" }] },
+      "actionFields": [{ "key": "attendee_email", "label": "Attendee email", "required": true, "type": "email" }]
+    },
+    "expected": { "category": "unsupported", "supported": false, "candidateIds": [], "ceiling": "low" }
+  },
+  {
+    "id": "missing-field-value-actually-present-unsupported",
+    "note": "The app reported a missing field, but by the time this ran the resolved value was not actually empty (a stale or misleading app message) -- the rule correctly declines rather than guessing.",
+    "input": {
+      "error": { "category_hint": "missing_field", "code": "invalid", "message": "Invalid attendee email.", "field": "attendee_email", "retryable": false, "outcome": "not_executed" },
+      "config": { "attendee_email": { "kind": "mapped", "source": "email" } },
+      "resolved": { "attendee_email": "ana@example.com" },
+      "triggerData": { "email": "ana@example.com" },
+      "triggerSchema": { "fields": [{ "key": "email", "label": "Email", "type": "email" }] },
+      "actionFields": [{ "key": "attendee_email", "label": "Attendee email", "required": true, "type": "email" }]
+    },
+    "expected": { "category": "unsupported", "supported": false, "candidateIds": [], "ceiling": "low" }
+  }
+]
