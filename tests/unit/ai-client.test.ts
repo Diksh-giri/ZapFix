@@ -134,6 +134,62 @@ describe("createAnthropicClient: when it cannot or should not call", () => {
   });
 });
 
+describe("createAnthropicClient: a model that rejects output_config.effort (e.g. Haiku 4.5)", () => {
+  const effortRejected = () =>
+    Object.assign(
+      new Error('400 {"type":"error","error":{"type":"invalid_request_error","message":"This model does not support the effort parameter."}}'),
+      { status: 400 },
+    );
+
+  it("retries once, in the same call, without output_config, and returns that answer", async () => {
+    let calls = 0;
+    const create = vi.fn(async (_params: Params, _options: Options) => {
+      calls += 1;
+      if (calls === 1) throw effortRejected();
+      return reply('{"ok":true}') as never;
+    });
+    const sdk: AnthropicLike = { messages: { create } };
+    await expect(client(sdk).complete(call)).resolves.toBe('{"ok":true}');
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(create.mock.calls[0]![0]).toMatchObject({ output_config: { effort: "low" } });
+    expect(create.mock.calls[1]![0]).not.toHaveProperty("output_config");
+  });
+
+  it("reports usage from the fallback call, not the rejected one", async () => {
+    const onUsage = vi.fn();
+    let calls = 0;
+    const create = vi.fn(async () => {
+      calls += 1;
+      if (calls === 1) throw effortRejected();
+      return reply("{}", { usage: { input_tokens: 5, output_tokens: 9 } });
+    });
+    const sdk: AnthropicLike = { messages: { create } };
+    await client(sdk, { onUsage }).complete(call);
+    expect(onUsage).toHaveBeenCalledTimes(1);
+    expect(onUsage).toHaveBeenCalledWith({ inputTokens: 5, outputTokens: 9 });
+  });
+
+  it("still fails, mapped from the fallback call's own status, if the fallback call also fails", async () => {
+    let calls = 0;
+    const create = vi.fn(async () => {
+      calls += 1;
+      if (calls === 1) throw effortRejected();
+      throw Object.assign(new Error("boom"), { status: 500 });
+    });
+    const sdk: AnthropicLike = { messages: { create } };
+    await expect(client(sdk).complete(call)).rejects.toMatchObject({ reason: "api_error", retryable: true });
+    expect(create).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not retry a real 400 that has nothing to do with the effort parameter", async () => {
+    const { sdk, create } = fakeSdk(() => {
+      throw Object.assign(new Error("boom"), { status: 400 });
+    });
+    await expect(client(sdk).complete(call)).rejects.toMatchObject({ reason: "api_error", retryable: false });
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("explainWithAi with the real client's errors", () => {
   const payload: AiPayload = { category: "missing_required_field", error: { code: "x", message: "y" }, fields: [], candidates: [] };
 
