@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { AppliedChangeResult } from "@/components/AppliedChangeResult";
 import { RunActions, RunDiagnosisPanel, RunEvidence } from "@/components/RunDetail";
 import {
   createExclusiveActionRunner,
@@ -10,9 +11,11 @@ import {
   shouldRecordFailureOpened,
   shouldPollRun,
 } from "@/lib/run-detail";
-import { loadRun, recordFailureOpened, requestDiagnosis, retryRun, RunRequestError } from "@/lib/runs-client";
+import { loadRun, recordFailureOpened, requestDiagnosis, restoreAppliedChange, retryRun, RunRequestError } from "@/lib/runs-client";
 import type { RunView } from "@/lib/schemas/runs";
 import type { DiagnosisView } from "@/lib/schemas/diagnosis";
+import { AppliedChangeViewSchema, ConfirmResultSchema, RestoreResultSchema } from "@/lib/schemas/change-results";
+import { classifyRetryOutcome, describeResultValue } from "@/lib/result-recovery";
 
 const view = (status: RunView["run"]["status"]): RunView => ({
   run: {
@@ -108,6 +111,124 @@ describe("runDetailReducer", () => {
       { type: "load_succeeded", view: view("succeeded") },
     );
     expect(shouldPollRun(ready)).toBe(false);
+  });
+});
+
+describe("applied change and retry results", () => {
+  const attempt = (
+    attemptNo: number,
+    status: RunView["run"]["status"],
+    code?: string,
+    field = "attendee_email",
+  ): RunView["attempts"][number] => ({
+    id: `attempt-${attemptNo}`,
+    runId: "run-1",
+    stepKey: "action",
+    attemptNo,
+    status,
+    configSnapshot: {},
+    ...(code ? { errorStd: {
+      category_hint: "missing_field" as const,
+      code,
+      message: "A required value is missing.",
+      field,
+      retryable: false,
+      outcome: "not_executed" as const,
+    } } : {}),
+    idempotencyKey: `key-${attemptNo}`,
+    startedAt: "2026-09-28T12:00:00.000Z",
+  });
+
+  const original = failedView();
+
+  it("classifies successful, repeated, different, and running retry outcomes", () => {
+    const retried = view("succeeded");
+    retried.attempts = [attempt(1, "failed", "missing_required_field"), attempt(2, "succeeded")];
+    expect(classifyRetryOutcome(original, retried)).toBe("resolved");
+
+    retried.run.status = "failed";
+    retried.attempts[1] = attempt(2, "failed", "missing_required_field");
+    expect(classifyRetryOutcome(original, retried)).toBe("same_error");
+
+    retried.attempts[1] = attempt(2, "failed", "different_error", "start");
+    expect(classifyRetryOutcome(original, retried)).toBe("new_error");
+
+    retried.run.status = "running";
+    retried.attempts[1] = attempt(2, "running");
+    expect(classifyRetryOutcome(original, retried)).toBe("running");
+  });
+
+  it("validates the browser-safe confirm, restore, and applied-change shapes", () => {
+    const workflow = { id: "workflow-1", configVersion: 2, config: { attendee_email: { kind: "mapped" as const, source: "contact_email" } } };
+    expect(ConfirmResultSchema.parse({ workflow: { ...workflow, lastModifiedBy: "debugger" }, configChangeId: "change-1", approvalId: "approval-1" })).toBeTruthy();
+    expect(RestoreResultSchema.parse({ workflow, configChangeId: "change-1", status: "restored", note: "Settings only." })).toBeTruthy();
+    expect(AppliedChangeViewSchema.parse({
+      configChangeId: "change-1", approvalId: "approval-1", fieldPath: "actionConfig.attendee_email",
+      originalValue: { kind: "static", value: "" }, updatedValue: { kind: "mapped", source: "contact_email" },
+    })).toBeTruthy();
+  });
+
+  it("renders the approved before-and-after values and each completed retry outcome", () => {
+    const change = {
+      configChangeId: "change-1",
+      approvalId: "approval-1",
+      fieldPath: "actionConfig.attendee_email",
+      originalValue: { kind: "static" as const, value: "" },
+      updatedValue: { kind: "mapped" as const, source: "contact_email" },
+    };
+    expect(describeResultValue(change.originalValue)).toBe("Empty fixed value");
+    const applied = renderToStaticMarkup(createElement(AppliedChangeResult, { change, outcome: null }));
+    expect(applied).toContain("Change applied");
+    expect(applied).toContain("Empty fixed value");
+    expect(applied).toContain("Form field: contact_email");
+    expect(applied).toContain("approval-1");
+
+    expect(renderToStaticMarkup(createElement(AppliedChangeResult, { change, outcome: "resolved" }))).toContain("retry succeeded");
+    expect(renderToStaticMarkup(createElement(AppliedChangeResult, { change, outcome: "same_error" }))).toContain("same error occurred again");
+    const newError = renderToStaticMarkup(createElement(AppliedChangeResult, { change, outcome: "new_error" }));
+    expect(newError).toContain("choose Diagnose");
+    expect(newError).not.toContain("started a new diagnosis");
+  });
+
+  it("renders an accessible restore confirmation, conflict warning, busy state, and completion", () => {
+    const change = {
+      configChangeId: "change-1", approvalId: "approval-1", fieldPath: "actionConfig.attendee_email",
+      originalValue: { kind: "static" as const, value: "old" }, updatedValue: { kind: "static" as const, value: "new" },
+    };
+    const render = (restoreState: "idle" | "confirming" | "conflict" | "restoring" | "restored") =>
+      renderToStaticMarkup(createElement(AppliedChangeResult, { change, outcome: null, restoreState }));
+
+    expect(render("idle")).toContain("Restore previous setting");
+    expect(render("confirming")).toContain('role="alertdialog"');
+    expect(render("confirming")).toContain("cannot undo actions already taken");
+    expect(render("conflict")).toContain("edited by hand");
+    expect(render("conflict")).toContain("Overwrite and restore");
+    expect(render("restoring")).toMatch(/<button[^>]*disabled=""[^>]*>Restoring\.\.\.<\/button>/);
+    expect(render("restored")).toContain('role="status"');
+    expect(render("restored")).toContain("Previous setting restored");
+  });
+
+  it("posts a guarded restore request and validates the result", async () => {
+    const fetchRequest = async (input: string, init?: RequestInit) => {
+      expect(input).toBe("/api/config-changes/change-1/restore");
+      expect(init).toMatchObject({ method: "POST", body: JSON.stringify({ confirmOverwrite: true }) });
+      return new Response(JSON.stringify({
+        configChangeId: "change-1",
+        status: "restored",
+        workflow: { id: "workflow-1", configVersion: 3, config: {} },
+        note: "Restore changes ZapFix settings only.",
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    };
+    await expect(restoreAppliedChange("change-1", true, fetchRequest)).resolves.toMatchObject({ status: "restored" });
+  });
+
+  it("surfaces manual-edit conflicts without losing the server error code", async () => {
+    const fetchRequest = async () => new Response(JSON.stringify({
+      error: { code: "manual_edit_conflict", message: "This setting was edited by hand." },
+    }), { status: 409, headers: { "content-type": "application/json" } });
+    await expect(restoreAppliedChange("change-1", false, fetchRequest)).rejects.toMatchObject({
+      code: "manual_edit_conflict",
+    });
   });
 });
 
