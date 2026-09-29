@@ -42,7 +42,7 @@ export interface AnthropicLike {
         max_tokens: number;
         system: string;
         messages: Array<{ role: "user"; content: string }>;
-        output_config: { effort: "low" };
+        output_config?: { effort: "low" };
       },
       options: { timeout: number; maxRetries: number },
     ): Promise<{
@@ -57,9 +57,24 @@ export interface AnthropicLike {
 const NOT_RETRYABLE_STATUS = new Set([400, 401, 403, 404]);
 
 /**
+ * Some models (Haiku 4.5 at the time of writing) reject output_config.effort outright with a 400.
+ * Not every model swap should need a code change here, so this is detected from the provider's own
+ * refusal rather than a hard-coded model list. Matched on the message only: never true for a real
+ * outage or a bad key, both of which get their own distinct wording from the provider.
+ */
+function isUnsupportedEffortError(err: unknown): boolean {
+  const status = (err as { status?: unknown } | null)?.status;
+  const message = err instanceof Error ? err.message : "";
+  return status === 400 && /effort parameter/i.test(message);
+}
+
+/**
  * Anthropic implementation of AiClient (TDD section 15). Rules:
  *  - model from AI_MODEL, key from ANTHROPIC_API_KEY (never hard-coded; nothing is logged)
  *  - no tools, no sampling settings (current models reject temperature), low effort, capped output
+ *  - low effort is retried once, in this same call, without output_config if the model rejects that
+ *    field outright (see isUnsupportedEffortError) - a model-support gap, not a transient failure,
+ *    so it must not consume explainWithAi's one external retry
  *  - the timeout is enforced per call; the SDK never retries by itself (explainWithAi retries once)
  *  - with no key or no model it makes NO request, so an unconfigured app costs nothing and shows manual mode
  * `onUsage` receives token counts only, for measuring cost. It never sees the prompt or the reply.
@@ -87,21 +102,32 @@ export function createAnthropicClient(
       if (!apiKey) throw new AiCallError("no_key", false);
       if (!model) throw new AiCallError("no_model", false);
 
-      let response;
-      try {
-        response = await sdkFor(apiKey).messages.create(
+      const request = (withEffort: boolean) =>
+        sdkFor(apiKey).messages.create(
           {
             model,
             max_tokens: MAX_OUTPUT_TOKENS,
             system,
             messages: [{ role: "user", content: user }],
-            output_config: { effort: "low" },
+            ...(withEffort ? { output_config: { effort: "low" as const } } : {}),
           },
           { timeout: timeoutMs, maxRetries: 0 },
         );
+
+      let response;
+      try {
+        response = await request(true);
       } catch (err) {
-        const status = (err as { status?: unknown } | null)?.status;
-        throw new AiCallError("api_error", !(typeof status === "number" && NOT_RETRYABLE_STATUS.has(status)));
+        if (!isUnsupportedEffortError(err)) {
+          const status = (err as { status?: unknown } | null)?.status;
+          throw new AiCallError("api_error", !(typeof status === "number" && NOT_RETRYABLE_STATUS.has(status)));
+        }
+        try {
+          response = await request(false);
+        } catch (err2) {
+          const status = (err2 as { status?: unknown } | null)?.status;
+          throw new AiCallError("api_error", !(typeof status === "number" && NOT_RETRYABLE_STATUS.has(status)));
+        }
       }
 
       opts.onUsage?.({ inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens });
