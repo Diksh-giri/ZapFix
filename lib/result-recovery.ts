@@ -4,6 +4,10 @@ import type { FieldMapping } from "@/lib/schemas/workflow-config";
 
 export type RetryOutcome = "resolved" | "same_error" | "new_error" | "running";
 
+export function needsNewDiagnosis(outcome: RetryOutcome): boolean {
+  return outcome === "same_error" || outcome === "new_error";
+}
+
 function latestError(view: RunView): StandardError | undefined {
   return [...view.attempts].sort((a, b) => b.attemptNo - a.attemptNo).find((attempt) => attempt.errorStd)?.errorStd;
 }

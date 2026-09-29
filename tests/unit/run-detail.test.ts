@@ -15,7 +15,7 @@ import { loadRun, recordFailureOpened, requestDiagnosis, restoreAppliedChange, r
 import type { RunView } from "@/lib/schemas/runs";
 import type { DiagnosisView } from "@/lib/schemas/diagnosis";
 import { AppliedChangeViewSchema, ConfirmResultSchema, RestoreResultSchema } from "@/lib/schemas/change-results";
-import { classifyRetryOutcome, describeResultValue } from "@/lib/result-recovery";
+import { classifyRetryOutcome, describeResultValue, needsNewDiagnosis } from "@/lib/result-recovery";
 
 const view = (status: RunView["run"]["status"]): RunView => ({
   run: {
@@ -156,6 +156,11 @@ describe("applied change and retry results", () => {
     retried.run.status = "running";
     retried.attempts[1] = attempt(2, "running");
     expect(classifyRetryOutcome(original, retried)).toBe("running");
+
+    expect(needsNewDiagnosis("same_error")).toBe(true);
+    expect(needsNewDiagnosis("new_error")).toBe(true);
+    expect(needsNewDiagnosis("resolved")).toBe(false);
+    expect(needsNewDiagnosis("running")).toBe(false);
   });
 
   it("validates the browser-safe confirm, restore, and applied-change shapes", () => {

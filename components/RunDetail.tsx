@@ -22,7 +22,7 @@ import type { DiagnosisView } from "@/lib/schemas/diagnosis";
 import type { AppliedChangeView } from "@/lib/schemas/change-results";
 import type { ProposalView } from "@/lib/schemas/proposals";
 import type { RunView } from "@/lib/schemas/runs";
-import { classifyRetryOutcome, type RetryOutcome } from "@/lib/result-recovery";
+import { classifyRetryOutcome, needsNewDiagnosis, type RetryOutcome } from "@/lib/result-recovery";
 
 const POLL_INTERVAL_MS = 1_500;
 
@@ -262,6 +262,7 @@ export function RunDetail({
   const retryOutcome = retryOutcomeState?.runId === runId && retryOutcomeState.configChangeId === appliedChange?.configChangeId
     ? retryOutcomeState.value
     : null;
+  const retryNeedsDiagnosis = retryOutcome ? needsNewDiagnosis(retryOutcome) : false;
   const restoreState = appliedChange && restoreView?.changeId === appliedChange.configChangeId ? restoreView.state : "idle";
   const restoreError = appliedChange && restoreView?.changeId === appliedChange.configChangeId ? restoreView.error : null;
 
@@ -346,13 +347,24 @@ export function RunDetail({
 
   const decide = (decision: "rejected" | "exited") => actionRunner.current(async () => {
     if (!proposal) return;
+    const option = proposal.options.find((candidate) => candidate.id === selectedOptionId);
+    if (!option) return;
     setBusy("proposal"); setActionError(null);
     try {
-      await decideProposal(proposal.id, decision);
+      await decideProposal(proposal.id, decision, {
+        ...(option.isDefault ? {} : { selectedOptionId: option.id }),
+        expectedConfigVersion: proposal.baseConfigVersion,
+        summaryHash: option.summaryHash,
+      });
       setProposalState({ runId, value: { ...proposal, status: "decided" } });
       setApprovalOpen(false);
     } catch (caught) {
       setActionError(explainActionError(caught, "The proposal decision could not be saved."));
+      if (caught instanceof RunRequestError && caught.code === "proposal_outdated") {
+        setApprovalOpen(false);
+        setProposalState(null);
+        setProposalOutdatedRunId(runId);
+      }
     } finally {
       setBusy(null);
     }
@@ -405,8 +417,10 @@ export function RunDetail({
       if (appliedChange && originalView) {
         const outcome = classifyRetryOutcome(originalView, view);
         setRetryOutcomeState({ runId, configChangeId: appliedChange.configChangeId, value: outcome });
-        if (outcome === "new_error") {
-          setDiagnosisState(null);
+        if (needsNewDiagnosis(outcome)) {
+          setProposalState(null);
+          setSelectedOptionId("");
+          setApprovalOpen(false);
           setRepairLimitState(null);
         }
       }
@@ -474,7 +488,7 @@ export function RunDetail({
       <RunActions
         view={view}
         busy={busy}
-        diagnosisId={retryOutcome === "new_error" || proposalOutdatedRunId === runId
+        diagnosisId={retryNeedsDiagnosis || proposalOutdatedRunId === runId
           ? null
           : diagnosis?.id ?? view.latestDiagnosisId ?? (repairLimitReached ? "repair-limit" : null)}
         confirmUncertain={confirmUncertain}
@@ -485,7 +499,7 @@ export function RunDetail({
       />
       <RunDiagnosisPanel
         view={view}
-        diagnosis={retryOutcome === "new_error" ? null : diagnosis}
+        diagnosis={retryNeedsDiagnosis ? null : diagnosis}
         repairLimitReached={repairLimitReached}
         retrying={busy === "diagnose"}
         onRetryDiagnosis={() => void diagnose()}

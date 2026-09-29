@@ -84,11 +84,11 @@ describe("diagnosis client", () => {
       });
       return Response.json({ status: "decided" });
     };
-    await decideProposal("proposal-1", "rejected", fetchRequest);
+    await decideProposal("proposal-1", "rejected", { expectedConfigVersion: 1, summaryHash: "b".repeat(64) }, fetchRequest);
     await confirmProposal("proposal-1", { selectedOptionId: "option-2", expectedConfigVersion: 1, summaryHash: "a".repeat(64) }, fetchRequest);
     await recordSummaryViewed("run-1", fetchRequest);
     expect(calls.map((call) => [call.input, call.init?.body])).toEqual([
-      ["/api/proposals/proposal-1/decision", JSON.stringify({ decision: "rejected" })],
+      ["/api/proposals/proposal-1/decision", JSON.stringify({ decision: "rejected", expectedConfigVersion: 1, summaryHash: "b".repeat(64) })],
       ["/api/proposals/proposal-1/confirm", JSON.stringify({ selectedOptionId: "option-2", expectedConfigVersion: 1, summaryHash: "a".repeat(64) })],
       ["/api/events", JSON.stringify({ type: "summary_viewed", runId: "run-1" })],
     ]);

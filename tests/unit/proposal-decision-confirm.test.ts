@@ -9,8 +9,8 @@ import { DEFAULT_ID, code, config, hashFor, now, setup } from "./_support/propos
 const confirm = (store: MemoryProposalStore, over: Partial<Parameters<typeof confirmProposal>[1]> = {}) =>
   confirmProposal({ store, now }, { proposalId: "prop-1", userId: "user-1", expectedConfigVersion: 4, summaryHash: hashFor(), ...over });
 
-const decide = (store: MemoryProposalStore, decision: "rejected" | "exited" = "rejected", over: { userId?: string; proposalId?: string } = {}) =>
-  decideProposal({ store, now }, { proposalId: "prop-1", userId: "user-1", decision, ...over });
+const decide = (store: MemoryProposalStore, decision: "rejected" | "exited" = "rejected", over: Partial<Parameters<typeof decideProposal>[1]> = {}) =>
+  decideProposal({ store, now }, { proposalId: "prop-1", userId: "user-1", decision, expectedConfigVersion: 4, summaryHash: hashFor(), ...over });
 
 /** Nothing about the workflow, approvals, changes or events may differ from the start. */
 function expectUntouched(store: MemoryProposalStore, proposalStatus = "pending") {
@@ -62,6 +62,19 @@ describe("decideProposal (reject or exit; safety test 1: no change without appro
       expect(await code(decide(store))).toBe("proposal_outdated");
       expectUntouched(store, status);
     }
+  });
+
+  it("records the exact alternate-option summary that was shown", async () => {
+    const store = setup();
+    const other = "map:attendee_email:work_email";
+    await decide(store, "rejected", { selectedOptionId: other, summaryHash: hashFor(other) });
+    expect(store.approvals()[0]).toMatchObject({ wasEdited: true });
+    expect(store.approvals()[0]!.summaryShown.proposedValue).toEqual({ kind: "mapped", source: "work_email" });
+  });
+
+  it("refuses a stale version or mismatched shown summary", async () => {
+    expect(await code(decide(setup(), "rejected", { expectedConfigVersion: 3 }))).toBe("proposal_outdated");
+    expect(await code(decide(setup(), "exited", { summaryHash: "0".repeat(64) }))).toBe("proposal_outdated");
   });
 
   it("has nothing to decide for reconnect guidance", async () => {

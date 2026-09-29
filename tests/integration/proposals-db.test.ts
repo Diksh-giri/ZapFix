@@ -155,11 +155,11 @@ describe.skipIf(!enabled)("proposals on a real database (scratch only)", () => {
   it("reject records the decision and leaves the settings alone", async () => {
     const store = createDrizzleProposalStore(db!);
     const p = await newProposal(store);
-    await decideProposal({ store, now }, { proposalId: p.id, userId: USER, decision: "rejected" });
+    await decideProposal({ store, now }, { proposalId: p.id, userId: USER, decision: "rejected", expectedConfigVersion: 1, summaryHash: hashFor() });
     expect((await workflowRow()).configVersion).toBe(1);
     const [a] = await db!.select().from(approvals);
     expect(a).toMatchObject({ decision: "rejected", approvedFieldPath: null, approvedValue: null });
-    await expect(decideProposal({ store, now }, { proposalId: p.id, userId: USER, decision: "exited" })).rejects.toMatchObject({ code: "conflict" });
+    await expect(decideProposal({ store, now }, { proposalId: p.id, userId: USER, decision: "exited", expectedConfigVersion: 1, summaryHash: hashFor() })).rejects.toMatchObject({ code: "conflict" });
   });
 
   it("a new proposal supersedes the pending one", async () => {

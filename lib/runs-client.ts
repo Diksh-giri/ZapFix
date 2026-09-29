@@ -74,12 +74,13 @@ export async function loadDiagnosis(id: string, fetchRequest: FetchRunRequest = 
 export async function decideProposal(
   id: string,
   decision: "rejected" | "exited",
+  input: { selectedOptionId?: string; expectedConfigVersion: number; summaryHash: string },
   fetchRequest: FetchRunRequest = fetch,
 ): Promise<void> {
   await json(await fetchRequest(`/api/proposals/${id}/decision`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ decision }),
+    body: JSON.stringify({ decision, ...input }),
   }));
 }
 
