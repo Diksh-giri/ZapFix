@@ -13,7 +13,7 @@ const OUTCOME_TEXT: Record<Exclude<RetryOutcome, "running">, { heading: string; 
   },
   new_error: {
     heading: "The retry produced a different error",
-    detail: "ZapFix started a new diagnosis for the new failure.",
+    detail: "Review the new error, then choose Diagnose if you want ZapFix to analyze it.",
   },
 };
 

@@ -185,7 +185,9 @@ describe("applied change and retry results", () => {
 
     expect(renderToStaticMarkup(createElement(AppliedChangeResult, { change, outcome: "resolved" }))).toContain("retry succeeded");
     expect(renderToStaticMarkup(createElement(AppliedChangeResult, { change, outcome: "same_error" }))).toContain("same error occurred again");
-    expect(renderToStaticMarkup(createElement(AppliedChangeResult, { change, outcome: "new_error" }))).toContain("started a new diagnosis");
+    const newError = renderToStaticMarkup(createElement(AppliedChangeResult, { change, outcome: "new_error" }));
+    expect(newError).toContain("choose Diagnose");
+    expect(newError).not.toContain("started a new diagnosis");
   });
 
   it("renders an accessible restore confirmation, conflict warning, busy state, and completion", () => {

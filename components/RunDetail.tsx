@@ -234,7 +234,11 @@ export function RunDetail({
   const [diagnosisState, setDiagnosisState] = useState<{ runId: string; value: DiagnosisView } | null>(null);
   const [repairLimitState, setRepairLimitState] = useState<{ runId: string; reached: true } | null>(null);
   const [confirmUncertain, setConfirmUncertain] = useState(false);
-  const [retryOutcomeState, setRetryOutcomeState] = useState<{ runId: string; value: RetryOutcome } | null>(null);
+  const [retryOutcomeState, setRetryOutcomeState] = useState<{
+    runId: string;
+    configChangeId: string;
+    value: RetryOutcome;
+  } | null>(null);
   const [restoreView, setRestoreView] = useState<{
     changeId: string;
     state: "idle" | "confirming" | "conflict" | "restoring" | "restored";
@@ -244,7 +248,9 @@ export function RunDetail({
   const actionRunner = useRef(createExclusiveActionRunner());
   const diagnosis = diagnosisState?.runId === runId ? diagnosisState.value : null;
   const repairLimitReached = repairLimitState?.runId === runId;
-  const retryOutcome = retryOutcomeState?.runId === runId ? retryOutcomeState.value : null;
+  const retryOutcome = retryOutcomeState?.runId === runId && retryOutcomeState.configChangeId === appliedChange?.configChangeId
+    ? retryOutcomeState.value
+    : null;
   const restoreState = appliedChange && restoreView?.changeId === appliedChange.configChangeId ? restoreView.state : "idle";
   const restoreError = appliedChange && restoreView?.changeId === appliedChange.configChangeId ? restoreView.error : null;
 
@@ -328,19 +334,10 @@ export function RunDetail({
       setConfirmUncertain(false);
       if (appliedChange && originalView) {
         const outcome = classifyRetryOutcome(originalView, view);
-        setRetryOutcomeState({ runId, value: outcome });
+        setRetryOutcomeState({ runId, configChangeId: appliedChange.configChangeId, value: outcome });
         if (outcome === "new_error") {
-          try {
-            const result = await requestDiagnosis(runId);
-            setDiagnosisState({ runId, value: result.diagnosis });
-            setRepairLimitState(null);
-          } catch (caught) {
-            if (caught instanceof RunRequestError && caught.code === "repair_limit_reached") {
-              setRepairLimitState({ runId, reached: true });
-            } else {
-              setActionError(explainActionError(caught, "The retry finished, but the new diagnosis could not be started."));
-            }
-          }
+          setDiagnosisState(null);
+          setRepairLimitState(null);
         }
       }
     } catch (caught) {
@@ -410,7 +407,9 @@ export function RunDetail({
       <RunActions
         view={view}
         busy={busy}
-        diagnosisId={diagnosis?.id ?? view.latestDiagnosisId ?? (repairLimitReached ? "repair-limit" : null)}
+        diagnosisId={retryOutcome === "new_error"
+          ? null
+          : diagnosis?.id ?? view.latestDiagnosisId ?? (repairLimitReached ? "repair-limit" : null)}
         confirmUncertain={confirmUncertain}
         error={actionError}
         onConfirmUncertain={setConfirmUncertain}
@@ -419,7 +418,7 @@ export function RunDetail({
       />
       <RunDiagnosisPanel
         view={view}
-        diagnosis={diagnosis}
+        diagnosis={retryOutcome === "new_error" ? null : diagnosis}
         repairLimitReached={repairLimitReached}
         retrying={busy === "diagnose"}
         onRetryDiagnosis={() => void diagnose()}
