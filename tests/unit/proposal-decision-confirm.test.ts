@@ -77,6 +77,14 @@ describe("decideProposal (reject or exit; safety test 1: no change without appro
     expect(await code(decide(setup(), "exited", { summaryHash: "0".repeat(64) }))).toBe("proposal_outdated");
   });
 
+  it("expires a proposal when workflow settings changed after it was created", async () => {
+    const store = setup();
+    store.editByHand("wf-1", { ...config, attendee_email: { kind: "mapped", source: "manual_choice" } });
+    expect(await code(decide(store))).toBe("proposal_outdated");
+    expect(store.all()[0]!.status).toBe("expired");
+    expect(store.approvals()).toHaveLength(0);
+  });
+
   it("has nothing to decide for reconnect guidance", async () => {
     const store = setup({ proposal: { kind: "reconnect_guidance", fieldPath: null, currentValue: null, proposedValue: null, validOptions: [] } });
     expect(await code(decide(store))).toBe("validation_failed");

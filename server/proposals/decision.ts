@@ -16,10 +16,15 @@ export async function decideProposal(
   deps: { store: ProposalStore; now: () => Date },
   input: { proposalId: string; userId: string; decision: "rejected" | "exited"; selectedOptionId?: string; expectedConfigVersion: number; summaryHash: string },
 ): Promise<{ status: "decided" }> {
-  return deps.store.transaction(async (tx) => {
+  type Outcome = { ok: true; result: { status: "decided" } } | { ok: false; error: AppError };
+  const outcome: Outcome = await deps.store.transaction(async (tx): Promise<Outcome> => {
     const { proposal, workflow, diagnosis, failure, runId } = await loadPendingProposal(tx, input.proposalId, input.userId);
 
-    if (workflow.configVersion !== proposal.baseConfigVersion || input.expectedConfigVersion !== workflow.configVersion) {
+    if (workflow.configVersion !== proposal.baseConfigVersion) {
+      await tx.setProposalStatus(proposal.id, "expired");
+      return { ok: false, error: new AppError("proposal_outdated", OUTDATED) };
+    }
+    if (input.expectedConfigVersion !== workflow.configVersion) {
       throw new AppError("proposal_outdated", OUTDATED);
     }
     const proposed: ChangeOption = { fieldPath: proposal.fieldPath!, proposedValue: proposal.proposedValue! };
@@ -49,6 +54,8 @@ export async function decideProposal(
       type: "proposal_decided",
       payload: { proposal_id: proposal.id, decision: input.decision },
     });
-    return { status: "decided" as const };
+    return { ok: true, result: { status: "decided" as const } };
   });
+  if (!outcome.ok) throw outcome.error;
+  return outcome.result;
 }
