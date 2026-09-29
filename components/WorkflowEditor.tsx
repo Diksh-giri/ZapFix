@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { Button } from "@/components/ui/button";
+import { Notice } from "@/components/ui/notice";
+import { PageHeader } from "@/components/ui/page-header";
+import { Surface } from "@/components/ui/surface";
+import { StatePanel } from "@/components/ui/state-panel";
+import { RecoveryJourney } from "@/components/RecoveryJourney";
 import { FieldMapper } from "@/components/FieldMapper";
 import { RunDetail } from "@/components/RunDetail";
 import { TriggerForm } from "@/components/TriggerForm";
@@ -30,7 +35,7 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
-  const editorHeadingRef = useRef<HTMLHeadingElement>(null);
+  const editorHeadingRef = useRef<HTMLDivElement>(null);
 
   const refreshWorkflow = useCallback(async () => {
     try {
@@ -67,34 +72,35 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
     } finally { setSaving(false); }
   }
 
-  if (status === "loading") return <p role="status">Loading workflow...</p>;
+  if (status === "loading") return <StatePanel state="loading" title="Loading workflow" description="Getting the latest saved version." />;
   if (status === "error" || !workflow) return (
-    <div role="alert" className="space-y-3"><p>This workflow could not be loaded.</p><Button variant="outline" onClick={() => { setStatus("loading"); void refreshWorkflow(); }}>Try again</Button></div>
+    <StatePanel state="error" title="This workflow could not be loaded" description="Your saved workflow was not changed." action={<Button variant="outline" onClick={() => { setStatus("loading"); void refreshWorkflow(); }}>Try again</Button>} />
   );
 
   return (
     <div className="space-y-6">
       <Link className="text-sm underline" href="/workflows">Back to workflows</Link>
-      <header>
-        <h1 ref={editorHeadingRef} tabIndex={-1} className="text-2xl font-semibold">Edit workflow</h1>
-        <p className="mt-2 text-sm text-neutral-600">Version {workflow.configVersion} · Last changed by {workflow.lastModifiedBy}</p>
-      </header>
-      <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">Actions run on your real connected account. Use test data.</p>
+      <div ref={editorHeadingRef} tabIndex={-1}>
+        <PageHeader eyebrow="Workflow builder" title="Edit workflow" description={`Version ${workflow.configVersion} · Last changed by ${workflow.lastModifiedBy}`} />
+      </div>
+      <RecoveryJourney current={runId ? "Run" : "Build"} />
+      <Notice tone="warning" title="Use test data">Actions run on your real connected account.</Notice>
+      <Surface aria-labelledby="workflow-settings-heading">
+      <h2 id="workflow-settings-heading" className="mb-4 font-semibold">Workflow settings</h2>
       <label className="block text-sm font-medium">Name
         <input className="mt-1 h-9 w-full rounded-md border border-neutral-300 px-3 text-sm" maxLength={120} value={name} onChange={(event) => setName(event.target.value)} />
       </label>
       {action ? <FieldMapper fields={action.fields} triggerSchema={workflow.triggerSchema} value={config} onChange={setConfig} /> : null}
-      {error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null}
-      {message ? <p role="status" className="text-sm text-green-700">{message}</p> : null}
+      {error ? <Notice className="mt-4" tone="error">{error}</Notice> : null}
+      {message ? <Notice className="mt-4" tone="success">{message}</Notice> : null}
       <div className="flex gap-3">
         <Button disabled={saving || name.trim() === ""} onClick={() => void save()}>{saving ? "Saving..." : "Save changes"}</Button>
         {error?.includes("Refresh") ? <Button variant="outline" onClick={() => { setStatus("loading"); void refreshWorkflow(); }}>Refresh</Button> : null}
       </div>
+      </Surface>
       <section className="border-t pt-6">
         {hasUnsavedChanges ? (
-          <p className="mb-4 text-sm text-amber-800" role="status">
-            Save your changes before running a test so the displayed settings match the settings ZapFix executes.
-          </p>
+          <Notice className="mb-4" tone="warning" title="Save before testing">Save your changes before running a test so the displayed settings match the settings ZapFix executes.</Notice>
         ) : null}
         <TriggerForm
           triggerSchema={workflow.triggerSchema}

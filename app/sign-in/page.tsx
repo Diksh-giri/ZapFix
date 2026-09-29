@@ -1,13 +1,17 @@
 import { getSessionUser } from "@/server/access/session";
 import { signInWithPassword, signOut } from "./actions";
+import { Notice } from "@/components/ui/notice";
+import { PageHeader } from "@/components/ui/page-header";
+import { Surface } from "@/components/ui/surface";
+import { Button } from "@/components/ui/button";
 
-const messages: Record<string, { tone: string; text: string }> = {
-  signed_out: { tone: "text-neutral-700", text: "You have been signed out." },
-  invalid_input: { tone: "text-red-700", text: "Enter your email address and your password." },
-  invalid_credentials: { tone: "text-red-700", text: "That email or password is not right." },
-  not_invited: { tone: "text-red-700", text: "This account is not currently invited to ZapFix." },
-  not_configured: { tone: "text-red-700", text: "Sign-in is not configured yet. Contact the project owner." },
-  failed: { tone: "text-red-700", text: "We could not sign you in. Please try again in a moment." },
+const messages: Record<string, { tone: "success" | "error"; text: string }> = {
+  signed_out: { tone: "success", text: "You have been signed out." },
+  invalid_input: { tone: "error", text: "Enter your email address and your password." },
+  invalid_credentials: { tone: "error", text: "That email or password is not right." },
+  not_invited: { tone: "error", text: "This account is not currently invited to ZapFix." },
+  not_configured: { tone: "error", text: "Sign-in is not configured yet. Contact the project owner." },
+  failed: { tone: "error", text: "We could not sign you in. Please try again in a moment." },
 };
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ status?: string; next?: string }> }) {
@@ -15,25 +19,20 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
   const message = status ? messages[status] : undefined;
 
   return (
-    <div className="mx-auto max-w-md space-y-6 py-12">
-      <div className="space-y-2">
-        <h1 className="text-2xl font-semibold">Sign in to ZapFix</h1>
-        <p className="text-sm text-neutral-600">Use the email address and password the project owner gave you.</p>
-      </div>
+    <div className="mx-auto max-w-md space-y-6 py-6 sm:py-12">
+      <PageHeader eyebrow="Account" title="Sign in to ZapFix" description="Use the email address and password the project owner gave you." />
 
-      {message ? <p className={`rounded-md bg-neutral-100 p-3 text-sm ${message.tone}`}>{message.text}</p> : null}
+      {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
 
       {user ? (
-        <div className="space-y-4">
+        <Surface className="space-y-4">
           <p className="text-sm text-neutral-700">Signed in as {user.email}</p>
           <form action={signOut}>
-            <button className="rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium hover:bg-neutral-50" type="submit">
-              Sign out
-            </button>
+            <Button variant="outline" type="submit">Sign out</Button>
           </form>
-        </div>
+        </Surface>
       ) : (
-        <form action={signInWithPassword} className="space-y-4">
+        <Surface><form action={signInWithPassword} className="space-y-4">
           <input name="next" type="hidden" value={next ?? ""} />
           <label className="block space-y-2 text-sm font-medium" htmlFor="email">
             Email address
@@ -58,10 +57,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
               type="password"
             />
           </label>
-          <button className="w-full rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800" type="submit">
-            Sign in
-          </button>
-        </form>
+          <Button className="w-full" type="submit">Sign in</Button>
+        </form></Surface>
       )}
 
       <p className="text-xs leading-5 text-neutral-500">Only invited testers can sign in. Accounts are created by the project owner.</p>

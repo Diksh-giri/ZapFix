@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { ApprovalDialog } from "@/components/ApprovalDialog";
 import { ConfidenceBadge } from "@/components/ConfidenceBadge";
 import { DiffView } from "@/components/DiffView";
@@ -29,6 +30,7 @@ export function DebuggerPanel({ diagnosis, proposal, selectedOptionId, dialogOpe
   onReject: () => void;
   onExit: () => void;
 }) {
+  const approvalTriggerRef = useRef<HTMLButtonElement>(null);
   if (proposal.kind === "reconnect_guidance") {
     return (
       <section className="space-y-4" aria-labelledby="diagnosis-heading">
@@ -64,9 +66,9 @@ export function DebuggerPanel({ diagnosis, proposal, selectedOptionId, dialogOpe
         <p className="text-sm"><strong>Expected effect:</strong> {selected.summary.expectedEffect}</p>
         {selected.summary.uncertaintyNote ? <p className="text-sm"><strong>Uncertainty:</strong> {selected.summary.uncertaintyNote}</p> : null}
         <p className="text-sm font-medium">No change will be made unless you confirm.</p>
-        <Button disabled={busy || proposal.status !== "pending"} onClick={onOpenDialog}>Review and confirm</Button>
+        <Button ref={approvalTriggerRef} disabled={busy || proposal.status !== "pending"} onClick={onOpenDialog}>Review and confirm</Button>
       </div>
-      <ApprovalDialog open={dialogOpen} summary={selected.summary} busy={busy} error={error} onConfirm={onConfirm} onChooseDifferent={onCloseDialog} onReject={onReject} onExit={onExit} />
+      <ApprovalDialog returnFocusRef={approvalTriggerRef} open={dialogOpen} summary={selected.summary} busy={busy} error={error} onConfirm={onConfirm} onChooseDifferent={onCloseDialog} onReject={onReject} onExit={onExit} />
     </section>
   );
 }
