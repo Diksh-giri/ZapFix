@@ -24,6 +24,8 @@ cp .env.example .env.local     # fill in values as each task needs them
 npm run dev                    # http://localhost:3000
 ```
 
+Each Git worktree needs its own untracked `.env.local`. Git does not copy ignored secret files into a new worktree. If a review preview opens with `status=not_configured`, confirm that the worktree running Next.js has `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`; do not commit or print their values.
+
 ### Sign-in (email and password, invite-only)
 
 ZapFix permits only emails listed in the `invites` table with status `invited` or `active`. Nobody signs up on the site: the project owner creates each tester's account.
@@ -62,6 +64,8 @@ The foundation and most of the Calendar recovery path are implemented:
 - Real adapters for Google Calendar, Google Sheets, Gmail, Google Drive, and Slack, with recorded fixtures for the verified behaviors documented in the task briefs.
 - Run orchestration, retry guards, attempt history, deterministic diagnosis rules, proposal persistence, approval enforcement, configuration restore, rate limits, and audit events.
 - Connections, workflow editor, run detail, result and restore, and manual-mode interfaces.
+- A responsive Zapier-inspired application shell, useful dashboard, shared page and form surfaces, labeled notices and statuses, consistent loading/empty/error/success states, and an explicit Build → Run → Diagnose → Approve → Retry or restore journey.
+- Keyboard-accessible mobile navigation, skip navigation, visible focus treatment, and guarded restore dialogs with contained focus, Escape dismissal, and focus restoration.
 - Drizzle schema for all 12 tables, integrity triggers, row-level security, and 28 database safety checks.
 - A test-only fake adapter for deterministic development and CI. It is never registered as a product integration.
 
@@ -71,7 +75,7 @@ The current local baseline on `main` is 63 passing Vitest files and 749 passing 
 
 The Calendar milestone is not complete until the user can finish the entire guarded recovery journey. The main remaining work is:
 
-- **T19:** diagnosis and proposal interface, valid-option selection, approval dialog, reject/exit handling, and the handoff to the existing result view.
+- **T19 live verification:** the diagnosis, proposal, approval, decision, and result handoff interfaces are implemented; verify approve, alternate-option, reject, exit, retry, and restore against a real failed Calendar run.
 - **T22 and T23:** real-model smoke verification and prompt tuning against the evaluation set. These tasks are owned by Dikshyant.
 - **T24:** expand the rules and AI evaluation set and wire its quality gates into CI.
 - **T28:** finish the remaining integration coverage for the eleven safety tests.

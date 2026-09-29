@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { AppShell } from "@/components/AppShell";
+import { getSessionUser } from "@/server/access/session";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -6,12 +8,11 @@ export const metadata: Metadata = {
   description: "Diagnose, approve, apply and retry fixes for failed workflows.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const user = await getSessionUser();
   return (
     <html lang="en">
-      <body className="min-h-screen bg-white text-neutral-900 antialiased">
-        <main className="mx-auto max-w-3xl p-6">{children}</main>
-      </body>
+      <body className="min-h-screen bg-background text-foreground antialiased"><AppShell userEmail={user?.email ?? null}>{children}</AppShell></body>
     </html>
   );
 }

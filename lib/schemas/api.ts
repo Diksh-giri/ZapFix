@@ -25,7 +25,12 @@ export const RunWorkflowRequest = z.object({ triggerData: TriggerDataSchema });
 
 export const RetryRequest = z.object({ confirmUncertain: z.boolean().optional() });
 
-export const DecisionRequest = z.object({ decision: z.enum(["rejected", "exited"]) });
+export const DecisionRequest = z.object({
+  decision: z.enum(["rejected", "exited"]),
+  selectedOptionId: z.string().optional(),
+  expectedConfigVersion: z.number().int().positive(),
+  summaryHash: z.string().length(64),
+});
 
 export const ConfirmRequest = z.object({
   selectedOptionId: z.string().optional(),

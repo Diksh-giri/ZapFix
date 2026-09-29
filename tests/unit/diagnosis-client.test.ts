@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadDiagnosis, requestDiagnosis, RunRequestError } from "@/lib/runs-client";
+import { confirmProposal, decideProposal, loadDiagnosis, recordSummaryViewed, requestDiagnosis, RunRequestError } from "@/lib/runs-client";
 import type { DiagnosisView } from "@/lib/schemas/diagnosis";
 
 const diagnosis: DiagnosisView = {
@@ -35,10 +35,10 @@ describe("diagnosis client", () => {
     const calls: Array<{ input: string; init?: RequestInit }> = [];
     const fetchRequest = async (input: string, init?: RequestInit) => {
       calls.push({ input, init });
-      return Response.json(diagnosis);
+      return Response.json({ diagnosis, proposal: null });
     };
 
-    await expect(loadDiagnosis("diagnosis-1", fetchRequest)).resolves.toEqual(diagnosis);
+    await expect(loadDiagnosis("diagnosis-1", fetchRequest)).resolves.toEqual({ diagnosis, proposal: null });
     expect(calls).toEqual([{
       input: "/api/diagnoses/diagnosis-1",
       init: { headers: { accept: "application/json" } },
@@ -58,7 +58,7 @@ describe("diagnosis client", () => {
     ["invalid candidates", { ...diagnosis, candidates: [{ id: "unsafe", kind: "invented", description: "Unsafe" }] }],
     ["invalid AI status", { ...diagnosis, aiStatus: "pending" }],
   ])("rejects diagnosis responses with %s", async (_case, body) => {
-    const fetchRequest = async () => Response.json(body);
+    const fetchRequest = async () => Response.json({ diagnosis: body, proposal: null });
 
     await expect(loadDiagnosis("diagnosis-1", fetchRequest)).rejects.toMatchObject<Partial<RunRequestError>>({
       code: "invalid_response",
@@ -71,6 +71,27 @@ describe("diagnosis client", () => {
     await expect(requestDiagnosis("run-1", fetchRequest)).rejects.toMatchObject<Partial<RunRequestError>>({
       code: "invalid_response",
     });
+  });
+
+  it("posts proposal decisions, confirmations, and summary views with the guarded payloads", async () => {
+    const calls: Array<{ input: string; init?: RequestInit }> = [];
+    const fetchRequest = async (input: string, init?: RequestInit) => {
+      calls.push({ input, init });
+      if (input.endsWith("/confirm")) return Response.json({
+        workflow: { id: "workflow-1", configVersion: 2, config: {}, lastModifiedBy: "debugger" },
+        configChangeId: "change-1",
+        approvalId: "approval-1",
+      });
+      return Response.json({ status: "decided" });
+    };
+    await decideProposal("proposal-1", "rejected", { expectedConfigVersion: 1, summaryHash: "b".repeat(64) }, fetchRequest);
+    await confirmProposal("proposal-1", { selectedOptionId: "option-2", expectedConfigVersion: 1, summaryHash: "a".repeat(64) }, fetchRequest);
+    await recordSummaryViewed("run-1", fetchRequest);
+    expect(calls.map((call) => [call.input, call.init?.body])).toEqual([
+      ["/api/proposals/proposal-1/decision", JSON.stringify({ decision: "rejected", expectedConfigVersion: 1, summaryHash: "b".repeat(64) })],
+      ["/api/proposals/proposal-1/confirm", JSON.stringify({ selectedOptionId: "option-2", expectedConfigVersion: 1, summaryHash: "a".repeat(64) })],
+      ["/api/events", JSON.stringify({ type: "summary_viewed", runId: "run-1" })],
+    ]);
   });
 
   it("preserves API errors", async () => {

@@ -5,5 +5,12 @@ import { decideProposal } from "@/server/proposals/decision";
 import { proposalDeps } from "@/server/proposals";
 
 export const POST = apiRoute({ body: DecisionRequest }, async ({ user, params, body }) =>
-  decideProposal(proposalDeps(), { proposalId: parseId(params.id, "Proposal"), userId: user.id, decision: body.decision }),
+  decideProposal(proposalDeps(), {
+    proposalId: parseId(params.id, "Proposal"),
+    userId: user.id,
+    decision: body.decision,
+    selectedOptionId: body.selectedOptionId,
+    expectedConfigVersion: body.expectedConfigVersion,
+    summaryHash: body.summaryHash,
+  }),
 );

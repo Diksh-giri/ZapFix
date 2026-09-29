@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { EvidenceList } from "@/components/EvidenceList";
+import { Notice } from "@/components/ui/notice";
 import { canRetryDiagnosis, manualModeTip, type ManualModeReason } from "@/lib/manual-mode";
 import type { DiagnosisView } from "@/lib/schemas/diagnosis";
 import type { StandardError } from "@/lib/schemas/standard-error";
@@ -43,11 +44,7 @@ export function ManualMode({
 
   return (
     <section className="space-y-5 border-t pt-5" aria-labelledby="manual-mode-heading">
-      <div className="space-y-1">
-        <h3 id="manual-mode-heading" className="font-semibold">Continue manually</h3>
-        <p className="text-sm">{REASON_TEXT[reason]}</p>
-        <p className="text-sm">No change has been made.</p>
-      </div>
+      <div><h3 id="manual-mode-heading" className="sr-only">Continue manually</h3><Notice tone="warning" title="Continue manually"><p>{REASON_TEXT[reason]}</p><p>No change has been made.</p></Notice></div>
 
       <section className="space-y-1" aria-labelledby="manual-original-error-heading">
         <h4 id="manual-original-error-heading" className="text-sm font-medium">Original error from the app</h4>

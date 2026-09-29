@@ -198,6 +198,13 @@ export function createDrizzleProposalStore(db: Database): ProposalStore {
       return ctx && ctx.workflow.userId === userId ? ctx : undefined;
     },
 
+    async getContextByDiagnosis(diagnosisId, userId) {
+      const [row] = await db.select({ id: proposals.id }).from(proposals).where(eq(proposals.diagnosisId, diagnosisId)).limit(1);
+      if (!row) return undefined;
+      const ctx = await readContext(db, row.id, false);
+      return ctx && ctx.workflow.userId === userId ? ctx : undefined;
+    },
+
     async replacePending(workflowId, diagnosisId, draft: ProposalDraft | null) {
       return db.transaction(async (trx) => {
         const [origin] = await trx
