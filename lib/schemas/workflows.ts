@@ -21,7 +21,7 @@ export const WorkflowSchema = z.object({
   name: z.string(),
   app: z.enum(APP_IDS),
   actionKey: z.string(),
-  connectionId: z.string().uuid(),
+  connectionId: z.string().uuid().nullable(),
   triggerSchema: TriggerSchemaSchema,
   actionConfig: ActionConfigSchema,
   configVersion: z.number().int().positive(),

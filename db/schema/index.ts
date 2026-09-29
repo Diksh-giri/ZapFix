@@ -75,7 +75,9 @@ export const workflows = pgTable(
     name: text("name").notNull(),
     app: text("app").notNull(),
     actionKey: text("action_key").notNull(),
-    connectionId: uuid("connection_id").references(() => connections.id),
+    // No onDelete cascade: disconnecting an app must not delete the workflow, only detach it
+    // (loadRunnableWorkflow already blocks a run with no connectionId, T9/T12).
+    connectionId: uuid("connection_id").references(() => connections.id, { onDelete: "set null" }),
     triggerSchema: jsonb("trigger_schema").notNull(),
     actionConfig: jsonb("action_config").notNull(),
     configVersion: integer("config_version").notNull().default(1),
