@@ -4,6 +4,8 @@ import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { ManualMode } from "@/components/ManualMode";
 import { AppliedChangeResult } from "@/components/AppliedChangeResult";
 import { Button } from "@/components/ui/button";
+import { Notice } from "@/components/ui/notice";
+import { StatePanel } from "@/components/ui/state-panel";
 import { StepStatusList } from "@/components/StepStatusList";
 import { manualModeReason } from "@/lib/manual-mode";
 import {
@@ -181,7 +183,7 @@ export function RunActions({
           {busy === "retry" ? "Retrying..." : "Retry"}
         </Button>
       </div>
-      {error ? <p className="text-sm text-red-700" role="alert">{error}</p> : null}
+      {error ? <Notice tone="error">{error}</Notice> : null}
     </section>
   );
 }
@@ -370,15 +372,12 @@ export function RunDetail({
   });
 
   if (state.status === "idle" || (state.status === "loading" && !state.view)) {
-    return <p role="status">Loading run...</p>;
+    return <StatePanel state="loading" title="Loading run" description="Checking the latest attempt and its evidence." />;
   }
 
   if (state.status === "error" && !state.view) {
     return (
-      <div className="space-y-3" role="alert">
-        <p>{state.error}</p>
-        <Button variant="outline" onClick={() => void refresh()}>Try again</Button>
-      </div>
+      <StatePanel state="error" title="This run could not be loaded" description={state.error ?? undefined} action={<Button variant="outline" onClick={() => void refresh()}>Try again</Button>} />
     );
   }
 
@@ -424,12 +423,9 @@ export function RunDetail({
         onRetryDiagnosis={() => void diagnose()}
         onReturnToEditor={onReturnToEditor}
       />
-      {state.status === "loading" ? <p className="text-sm" role="status">Checking run status...</p> : null}
+      {state.status === "loading" ? <StatePanel state="loading" title="Checking run status" compact /> : null}
       {state.status === "error" ? (
-        <div className="flex items-center gap-3" role="alert">
-          <p className="text-sm">{state.error}</p>
-          <Button variant="outline" size="sm" onClick={() => void refresh()}>Try again</Button>
-        </div>
+        <StatePanel state="error" title="Run status could not be refreshed" description={state.error ?? undefined} compact action={<Button variant="outline" size="sm" onClick={() => void refresh()}>Try again</Button>} />
       ) : null}
     </section>
   );

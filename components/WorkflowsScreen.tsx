@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
 import { PageHeader } from "@/components/ui/page-header";
 import { Surface, SurfaceHeader } from "@/components/ui/surface";
+import { StatePanel } from "@/components/ui/state-panel";
 import { FieldMapper } from "@/components/FieldMapper";
 import type { ActionConfig, TriggerSchema } from "@/lib/schemas/workflow-config";
 import type { AppCatalogItem, Workflow } from "@/lib/schemas/workflows";
@@ -160,14 +161,12 @@ export function WorkflowsScreen() {
         </Surface>
       ) : null}
 
-      {status === "loading" ? <p role="status" className="text-sm text-neutral-600">Loading workflows...</p> : null}
+      {status === "loading" ? <StatePanel state="loading" title="Loading workflows" description="Getting your latest workflow settings." compact /> : null}
       {status === "error" ? (
-        <Notice tone="error" title="Workflows could not be loaded">
-          <Button className="mt-3" variant="outline" onClick={() => { setStatus("loading"); void refreshWorkflows(); }}>Try again</Button>
-        </Notice>
+        <StatePanel state="error" title="Workflows could not be loaded" description="Your saved workflows were not changed." compact action={<Button variant="outline" onClick={() => { setStatus("loading"); void refreshWorkflows(); }}>Try again</Button>} />
       ) : null}
       {status === "ready" && workflows.length === 0 ? (
-        <p className="rounded-lg border border-dashed p-6 text-sm text-neutral-600">No workflows yet. Create one to run your first test.</p>
+        <StatePanel state="empty" title="No workflows yet" description="Create one workflow to run your first safe test." action={<Button onClick={() => setShowCreate(true)}>Create workflow</Button>} />
       ) : null}
       {status === "ready" && workflows.length > 0 ? (
         <ul className="divide-y rounded-lg border">

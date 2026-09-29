@@ -5,6 +5,7 @@ import { ConnectionCard } from "@/components/ConnectionCard";
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
 import { PageHeader } from "@/components/ui/page-header";
+import { StatePanel } from "@/components/ui/state-panel";
 import { disconnectConnection, loadConnections, startConnection } from "@/lib/connections-client";
 import type { OAuthNotice } from "@/lib/connections-page";
 import {
@@ -79,24 +80,16 @@ export function ConnectionsScreen({
         <Notice tone={notice.kind === "error" ? "error" : "success"}>{notice.message}</Notice>
       ) : null}
 
-      {state.loadStatus === "loading" ? (
-        <p className="text-sm text-neutral-600" role="status">
-          Loading your connections...
-        </p>
-      ) : null}
+      {state.loadStatus === "loading" ? <StatePanel state="loading" title="Loading your connections..." description="Checking which test accounts are ready to use." compact /> : null}
 
       {state.loadStatus === "error" ? (
-        <Notice tone="error" title="Connections could not be loaded">
-          <p>{state.loadError}</p>
-          <Button
+        <StatePanel state="error" title="Connections could not be loaded" description={state.loadError ?? undefined} compact action={<Button
             type="button"
             variant="outline"
-            className="mt-3"
             onClick={() => void refreshConnections()}
           >
             Try again
-          </Button>
-        </Notice>
+          </Button>} />
       ) : null}
 
       {state.loadStatus === "ready" ? (

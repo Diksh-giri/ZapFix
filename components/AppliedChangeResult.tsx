@@ -1,3 +1,6 @@
+"use client";
+
+import { useRef } from "react";
 import type { AppliedChangeView } from "@/lib/schemas/change-results";
 import { describeResultValue, type RetryOutcome } from "@/lib/result-recovery";
 import { Button } from "@/components/ui/button";
@@ -39,6 +42,7 @@ export function AppliedChangeResult({
   onCancelRestore,
   onConfirmRestore,
 }: AppliedChangeResultProps) {
+  const restoreButtonRef = useRef<HTMLButtonElement>(null);
   const result = outcome && outcome !== "running" ? OUTCOME_TEXT[outcome] : null;
   return (
     <section className="space-y-3 rounded-md border p-4" aria-labelledby="applied-change-heading">
@@ -60,19 +64,19 @@ export function AppliedChangeResult({
         {restoreState === "restored" ? (
           <Notice tone="success" title="Previous setting restored">Restore changed ZapFix settings only. It did not undo actions already taken in a connected app.</Notice>
         ) : restoreState === "confirming" ? (
-          <DialogPanel onDismiss={onCancelRestore} titleId="restore-confirm-heading" descriptionId="restore-confirm-description" title="Restore the previous setting?" actions={<>
+          <DialogPanel returnFocusRef={restoreButtonRef} onDismiss={onCancelRestore} titleId="restore-confirm-heading" descriptionId="restore-confirm-description" title="Restore the previous setting?" actions={<>
               <Button onClick={() => onConfirmRestore?.(false)}>Confirm restore</Button>
               <Button variant="outline" onClick={onCancelRestore}>Cancel</Button>
             </>}>This restores the previous ZapFix setting. It cannot undo actions already taken in Google Calendar, Gmail, Drive, Slack, or Sheets.</DialogPanel>
         ) : restoreState === "conflict" ? (
-          <DialogPanel onDismiss={onCancelRestore} titleId="restore-conflict-heading" descriptionId="restore-conflict-description" title="This setting was edited by hand" actions={<>
+          <DialogPanel returnFocusRef={restoreButtonRef} onDismiss={onCancelRestore} titleId="restore-conflict-heading" descriptionId="restore-conflict-description" title="This setting was edited by hand" actions={<>
               <Button onClick={() => onConfirmRestore?.(true)}>Overwrite and restore</Button>
               <Button variant="outline" onClick={onCancelRestore}>Keep manual edit</Button>
             </>}>Restoring will overwrite the newer manual edit. Continue only if you want the approved change’s original value restored.</DialogPanel>
         ) : restoreState === "restoring" ? (
           <Button disabled aria-busy="true">Restoring...</Button>
         ) : (
-          <Button variant="outline" onClick={onRequestRestore}>Restore previous setting</Button>
+          <Button ref={restoreButtonRef} variant="outline" onClick={onRequestRestore}>Restore previous setting</Button>
         )}
         {restoreError ? <Notice tone="error">{restoreError}</Notice> : null}
       </div>

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
 import { PageHeader } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
+import { StatePanel } from "@/components/ui/state-panel";
 import { RecoveryJourney } from "@/components/RecoveryJourney";
 import { FieldMapper } from "@/components/FieldMapper";
 import { RunDetail } from "@/components/RunDetail";
@@ -71,9 +72,9 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
     } finally { setSaving(false); }
   }
 
-  if (status === "loading") return <p role="status">Loading workflow...</p>;
+  if (status === "loading") return <StatePanel state="loading" title="Loading workflow" description="Getting the latest saved version." />;
   if (status === "error" || !workflow) return (
-    <div role="alert" className="space-y-3"><p>This workflow could not be loaded.</p><Button variant="outline" onClick={() => { setStatus("loading"); void refreshWorkflow(); }}>Try again</Button></div>
+    <StatePanel state="error" title="This workflow could not be loaded" description="Your saved workflow was not changed." action={<Button variant="outline" onClick={() => { setStatus("loading"); void refreshWorkflow(); }}>Try again</Button>} />
   );
 
   return (

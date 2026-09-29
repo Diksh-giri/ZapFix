@@ -7,6 +7,8 @@ import { loadConnections } from "@/lib/connections-client";
 import { loadWorkflows } from "@/lib/workflows-client";
 import type { ClientConnection } from "@/lib/schemas/connections";
 import type { Workflow as WorkflowView } from "@/lib/schemas/workflows";
+import { Button } from "@/components/ui/button";
+import { StatePanel } from "@/components/ui/state-panel";
 
 type DashboardState = { status: "loading"; workflows: []; connections: [] } | { status: "ready"; workflows: WorkflowView[]; connections: ClientConnection[] } | { status: "error"; workflows: []; connections: [] };
 
@@ -84,10 +86,10 @@ function Metric({ icon: Icon, label, value, detail }: { icon: typeof Workflow; l
   return <article className="rounded-lg border border-[#dedbd6] bg-white p-5"><div className="flex items-center justify-between"><p className="text-sm font-medium text-[#595653]">{label}</p><span className="grid size-9 place-items-center rounded-md bg-[#f2efeb] text-[#503eb6]"><Icon className="size-4" /></span></div><p className="mt-4 text-3xl font-semibold tracking-tight text-[#2d2e2f]">{value}</p><p className="mt-1 truncate text-xs text-[#77736f]">{detail}</p></article>;
 }
 
-function DashboardSkeleton() {
-  return <div aria-label="Loading dashboard" role="status" className="space-y-6"><div className="h-64 animate-pulse rounded-3xl bg-[#e7e7f0]" /><div className="grid gap-4 sm:grid-cols-3">{[1, 2, 3].map((item) => <div key={item} className="h-36 animate-pulse rounded-2xl bg-[#e7e7f0]" />)}</div><span className="sr-only">Loading dashboard...</span></div>;
+export function DashboardSkeleton() {
+  return <StatePanel state="loading" title="Loading your workspace" description="Getting workflows and connection status." />;
 }
 
-function DashboardError({ onRetry }: { onRetry: () => void }) {
-  return <div role="alert" className="rounded-2xl border border-red-200 bg-white p-6"><h1 className="text-xl font-semibold">Your dashboard could not be loaded</h1><p className="mt-2 text-sm text-[#666982]">Your data is safe. Try loading the page again.</p><button type="button" onClick={onRetry} className="mt-4 rounded-xl bg-[#242342] px-4 py-2 text-sm font-semibold text-white">Try again</button></div>;
+export function DashboardError({ onRetry }: { onRetry: () => void }) {
+  return <StatePanel state="error" title="Your dashboard could not be loaded" description="Your data is safe. Try loading the page again." action={<Button variant="outline" onClick={onRetry}>Try again</Button>} />;
 }

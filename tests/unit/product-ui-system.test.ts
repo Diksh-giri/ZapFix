@@ -1,11 +1,12 @@
 import { createElement, Fragment } from "react";
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { DialogPanel } from "@/components/ui/dialog-panel";
+import { DialogPanel, trappedFocusIndex } from "@/components/ui/dialog-panel";
 import { Notice } from "@/components/ui/notice";
 import { PageHeader } from "@/components/ui/page-header";
 import { RecoveryJourney } from "@/components/RecoveryJourney";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { StatePanel } from "@/components/ui/state-panel";
 
 describe("shared product UI", () => {
   it("renders a consistent page heading and status treatment", () => {
@@ -45,5 +46,22 @@ describe("shared product UI", () => {
     expect(html).toContain('tabindex="-1"');
     expect(html).toContain('aria-labelledby="title"');
     expect(html).toContain("This cannot undo an external action.");
+  });
+
+  it("keeps forward and backward keyboard focus inside dialogs", () => {
+    expect(trappedFocusIndex(-1, 2, false)).toBe(0);
+    expect(trappedFocusIndex(-1, 2, true)).toBe(1);
+    expect(trappedFocusIndex(0, 2, true)).toBe(1);
+    expect(trappedFocusIndex(1, 2, false)).toBe(0);
+    expect(trappedFocusIndex(0, 2, false)).toBeNull();
+  });
+
+  it("announces loading, empty, error, and success states consistently", () => {
+    for (const state of ["loading", "empty", "error", "success"] as const) {
+      const html = renderToStaticMarkup(createElement(StatePanel, { state, title: `${state} title`, description: "State detail" }));
+      expect(html).toContain(`${state} title`);
+      expect(html).toContain("State detail");
+      expect(html).toContain(state === "error" ? 'role="alert"' : 'role="status"');
+    }
   });
 });
