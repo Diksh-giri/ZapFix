@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Notice } from "@/components/ui/notice";
+import { PageHeader } from "@/components/ui/page-header";
+import { Surface, SurfaceHeader } from "@/components/ui/surface";
 import { FieldMapper } from "@/components/FieldMapper";
 import type { ActionConfig, TriggerSchema } from "@/lib/schemas/workflow-config";
 import type { AppCatalogItem, Workflow } from "@/lib/schemas/workflows";
@@ -109,23 +112,16 @@ export function WorkflowsScreen() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Workflows</h1>
-          <p className="mt-2 text-sm text-neutral-600">Build one-trigger, one-action workflows using test accounts.</p>
-        </div>
-        <Button type="button" onClick={() => setShowCreate((value) => !value)}>
+      <PageHeader eyebrow="Automation" title="Workflows" description="Build one-trigger, one-action workflows using test accounts." actions={<Button type="button" onClick={() => setShowCreate((value) => !value)}>
           {showCreate ? "Cancel" : "Create workflow"}
-        </Button>
-      </header>
+        </Button>} />
 
-      <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-        Actions run on your real connected accounts. Use a test calendar, channel, inbox, drive, or spreadsheet.
-      </p>
+      <Notice tone="warning" title="Use test data">Actions run on your real connected accounts. Use a test calendar, channel, inbox, drive, or spreadsheet.</Notice>
 
       {showCreate ? (
-        <form className="space-y-5 rounded-lg border p-5" onSubmit={submit}>
-          <h2 className="text-lg font-semibold">New workflow</h2>
+        <Surface className="space-y-5">
+        <form className="space-y-5" onSubmit={submit}>
+          <SurfaceHeader title="New workflow" description="Choose an app, map its fields, and save before running a test." />
           <label className="block text-sm font-medium">Name
             <input className={`mt-1 ${inputClass}`} maxLength={120} required value={name} onChange={(event) => setName(event.target.value)} />
           </label>
@@ -158,17 +154,17 @@ export function WorkflowsScreen() {
             </label>
           ) : null}
           {action && app ? <FieldMapper fields={action.fields} triggerSchema={triggerSchemaFor(app.id)} value={actionConfig} onChange={setActionConfig} /> : null}
-          {submitError ? <p role="alert" className="text-sm text-red-700">{submitError}</p> : null}
+          {submitError ? <Notice tone="error">{submitError}</Notice> : null}
           <Button disabled={saving || !action} type="submit">{saving ? "Saving..." : "Save workflow"}</Button>
         </form>
+        </Surface>
       ) : null}
 
       {status === "loading" ? <p role="status" className="text-sm text-neutral-600">Loading workflows...</p> : null}
       {status === "error" ? (
-        <div className="rounded-lg border border-red-200 p-4" role="alert">
-          <p className="text-sm text-red-800">Workflows could not be loaded.</p>
+        <Notice tone="error" title="Workflows could not be loaded">
           <Button className="mt-3" variant="outline" onClick={() => { setStatus("loading"); void refreshWorkflows(); }}>Try again</Button>
-        </div>
+        </Notice>
       ) : null}
       {status === "ready" && workflows.length === 0 ? (
         <p className="rounded-lg border border-dashed p-6 text-sm text-neutral-600">No workflows yet. Create one to run your first test.</p>

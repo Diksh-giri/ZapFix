@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
 import { ConnectionCard } from "@/components/ConnectionCard";
 import { Button } from "@/components/ui/button";
+import { Notice } from "@/components/ui/notice";
+import { PageHeader } from "@/components/ui/page-header";
 import { disconnectConnection, loadConnections, startConnection } from "@/lib/connections-client";
 import type { OAuthNotice } from "@/lib/connections-page";
 import {
@@ -71,20 +73,10 @@ export function ConnectionsScreen({
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold">Connections</h1>
-        <p className="mt-2 text-sm text-neutral-600">
-          Connect test accounts so ZapFix can run workflow actions on your behalf.
-        </p>
-      </header>
+      <PageHeader eyebrow="Workspace setup" title="Connections" description="Connect test accounts so ZapFix can run workflow actions on your behalf." />
 
       {notice ? (
-        <p
-          className={`rounded border p-3 text-sm ${notice.kind === "error" ? "border-red-200 text-red-800" : "border-green-200 text-green-800"}`}
-          role={notice.kind === "error" ? "alert" : "status"}
-        >
-          {notice.message}
-        </p>
+        <Notice tone={notice.kind === "error" ? "error" : "success"}>{notice.message}</Notice>
       ) : null}
 
       {state.loadStatus === "loading" ? (
@@ -94,8 +86,8 @@ export function ConnectionsScreen({
       ) : null}
 
       {state.loadStatus === "error" ? (
-        <div className="rounded border border-red-200 p-4" role="alert">
-          <p className="text-sm text-red-800">{state.loadError}</p>
+        <Notice tone="error" title="Connections could not be loaded">
+          <p>{state.loadError}</p>
           <Button
             type="button"
             variant="outline"
@@ -104,7 +96,7 @@ export function ConnectionsScreen({
           >
             Try again
           </Button>
-        </div>
+        </Notice>
       ) : null}
 
       {state.loadStatus === "ready" ? (

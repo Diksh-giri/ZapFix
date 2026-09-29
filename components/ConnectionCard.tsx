@@ -1,6 +1,8 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { Notice } from "@/components/ui/notice";
+import { StatusBadge } from "@/components/ui/status-badge";
 import type { ClientConnection } from "@/lib/schemas/connections";
 import type { Provider } from "@/lib/types";
 
@@ -73,7 +75,7 @@ export function ConnectionCard({
   };
 
   return (
-    <article className="rounded-lg border border-neutral-200 p-5" aria-labelledby={`${provider}-connection-title`}>
+    <article className="rounded-xl border border-neutral-200 bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]" aria-labelledby={`${provider}-connection-title`}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 id={`${provider}-connection-title`} className="font-semibold">
@@ -81,9 +83,7 @@ export function ConnectionCard({
           </h2>
           <p className="mt-1 text-sm text-neutral-600">Status: {statusText[displayState]}</p>
         </div>
-        <span className="rounded-full border border-neutral-300 px-2.5 py-1 text-xs font-medium">
-          {statusText[displayState]}
-        </span>
+        <StatusBadge label={statusText[displayState]} tone={displayState === "connected" ? "success" : displayState === "disconnected" ? "neutral" : "warning"} />
       </div>
 
       {connection ? (
@@ -119,9 +119,7 @@ export function ConnectionCard({
       ) : null}
 
       {provider === "slack" && showSlackHttpsWarning ? (
-        <p className="mt-4 text-sm font-medium text-amber-800" role="note">
-          Slack connections require HTTPS outside local development. Open the secure version of this site to connect.
-        </p>
+        <Notice className="mt-4" tone="warning">Slack connections require HTTPS outside local development. Open the secure version of this site to connect.</Notice>
       ) : null}
 
       <p className="mt-2 text-sm text-neutral-600">
@@ -129,9 +127,7 @@ export function ConnectionCard({
       </p>
 
       {error ? (
-        <p className="mt-3 text-sm font-medium text-red-700" role="alert">
-          {error}
-        </p>
+        <Notice className="mt-3" tone="error">{error}</Notice>
       ) : null}
 
       <div className="mt-5 flex flex-wrap gap-3">
