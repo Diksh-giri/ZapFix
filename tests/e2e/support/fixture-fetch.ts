@@ -54,5 +54,12 @@ export const fixtureFetch: typeof fetch = async (input, init) => {
     return jsonResponse(readFixture("slack", "success"));
   }
 
+  if (url.startsWith("https://sheets.googleapis.com/v4/spreadsheets/")) {
+    // An empty spreadsheet_id collapses the URL to ".../spreadsheets//values/..." (a real,
+    // recorded response -- Sheets has no missing-field error for this, only a plain 404).
+    if (/\/spreadsheets\/\/values\//.test(url)) return jsonResponse(readFixture("google-sheets", "empty_spreadsheet_id"));
+    return jsonResponse(readFixture("google-sheets", "success"));
+  }
+
   throw new Error(`fixtureFetch: no recorded fixture wired for ${url}`);
 };

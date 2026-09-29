@@ -1,0 +1,30 @@
+{
+  "scenario": "empty_spreadsheet_id",
+  "description": "The spreadsheet_id value is empty.",
+  "recorded_at": "2026-09-29",
+  "request_shape": {
+    "spreadsheet_id": "empty",
+    "sheet_name": "provided",
+    "values": "provided"
+  },
+  "response": {
+    "status": 404,
+    "body": {
+      "error": {
+        "code": 404,
+        "message": "Requested entity was not found.",
+        "status": "NOT_FOUND"
+      }
+    }
+  },
+  "mapped": {
+    "ok": false,
+    "error": {
+      "code": "http_404",
+      "message": "Requested entity was not found.",
+      "retryable": false,
+      "outcome": "not_executed",
+      "category_hint": "not_found"
+    }
+  }
+}

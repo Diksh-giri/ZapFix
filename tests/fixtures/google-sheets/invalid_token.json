@@ -1,7 +1,7 @@
 {
   "scenario": "invalid_token",
   "description": "An expired or invalid access token.",
-  "recorded_at": "2026-09-27",
+  "recorded_at": "2026-09-29",
   "request_shape": {
     "spreadsheet_id": "provided",
     "sheet_name": "provided",

@@ -1,13 +1,13 @@
 import { existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { seedCalendarWorkflow, seedSlackWorkflow } from "./seed";
+import { seedCalendarWorkflow, seedSheetsWorkflow, seedSlackWorkflow } from "./seed";
 
 if (existsSync(".env.local")) process.loadEnvFile(".env.local");
 
 /**
- * Runs once before the e2e suite (T29). Seeds one broken Calendar workflow and one broken Slack
- * workflow for the dedicated e2e test user and writes their ids to a JSON file specs read, since
- * Playwright's global setup can't hand data to tests directly.
+ * Runs once before the e2e suite (T29). Seeds one broken workflow per app for the dedicated e2e
+ * test user and writes their ids to a JSON file specs read, since Playwright's global setup can't
+ * hand data to tests directly.
  *
  * Needs E2E_TEST_USER_ID (the Supabase auth user id of a DEDICATED test user that has never
  * connected a real Google or Slack account -- see tests/e2e/support/seed.ts's safety notes) plus
@@ -18,6 +18,7 @@ export const STATE_PATH = path.join(__dirname, "..", ".e2e-state.json");
 export interface E2eState {
   calendarWorkflowId: string;
   slackWorkflowId: string;
+  sheetsWorkflowId: string;
 }
 
 /**
@@ -37,7 +38,15 @@ export default async function globalSetup(): Promise<void> {
     return;
   }
 
-  const [calendar, slack] = await Promise.all([seedCalendarWorkflow(userId), seedSlackWorkflow(userId)]);
-  const state: E2eState = { calendarWorkflowId: calendar.workflowId, slackWorkflowId: slack.workflowId };
+  // Sequential, not Promise.all: Calendar and Sheets share one Google connection row
+  // (connections is unique per user+provider), so seeding them concurrently would race.
+  const calendar = await seedCalendarWorkflow(userId);
+  const sheets = await seedSheetsWorkflow(userId);
+  const slack = await seedSlackWorkflow(userId);
+  const state: E2eState = {
+    calendarWorkflowId: calendar.workflowId,
+    slackWorkflowId: slack.workflowId,
+    sheetsWorkflowId: sheets.workflowId,
+  };
   writeFileSync(STATE_PATH, JSON.stringify(state, null, 2));
 }
