@@ -13,6 +13,9 @@ Failure → diagnosis → proposed change → human approval → retry (and rest
 | [docs/DECISIONS.md](docs/DECISIONS.md) | The 34 locked decisions. Changing one needs both of you to agree |
 | [docs/TEAM_SPLIT.md](docs/TEAM_SPLIT.md) | Who owns what, and the contracts between the two lanes |
 | [docs/WORKING_AGREEMENT.md](docs/WORKING_AGREEMENT.md) | How we work: branches, reviews, safety rules |
+| [docs/USABILITY_TEST_KIT.md](docs/USABILITY_TEST_KIT.md) | T30 moderator guide, participant tasks, safety briefing and study workflow |
+| [docs/USABILITY_PARTICIPANT_SURVEY.md](docs/USABILITY_PARTICIPANT_SURVEY.md) | Reusable post-task participant survey |
+| [docs/USABILITY_SESSION_SCORECARD.md](docs/USABILITY_SESSION_SCORECARD.md) | Per-session scorecard and aggregate worksheet for the eight PRD targets |
 
 ## Getting started
 ```bash
@@ -49,14 +52,34 @@ At sign-in ZapFix checks the password with Supabase first, then the invite. A wr
 | `npm run db:workflow-smoke -- --confirm --user-id <uuid> --connection-id <uuid>` | Non-destructive T10 persistence smoke test using an existing test user and Google connection |
 | `npm run db:generate` / `db:migrate` | Create and apply Drizzle migrations |
 
-## What already works in this scaffold
-- Next.js 16 + TypeScript + Tailwind app shell; every page and all 18 API endpoints exist as stubs that return the standard error body (`501 not_implemented`), each pointing at its task ID.
-- **Real, tested safety logic:** retry guards, AI output validation, AI payload builder (names and shapes only), token encryption, change applier, approval-summary hash, config resolution, one worked diagnosis rule.
-- **Database:** Drizzle schema for all 12 tables, a generated migration, and SQL for the integrity triggers and row-level security. **28 database safety checks pass** against real Postgres (`tests/db/`).
-- A test-double adapter (`server/adapters/fake`) so the whole loop can be built before the real Google and Slack adapters exist. It is a test tool, not the product (Decision #001).
+## Current project state
 
-## What is NOT built yet
-The remaining connection and adapter work, the other two diagnosis rules (T13), proposal and confirm transaction (T14), the AI client and prompt tuning (T22, T23), and all real screens (T16 to T21). Search the code for `TODO(T` to find each one.
+The foundation and most of the Calendar recovery path are implemented:
+
+- Invite-only Supabase authentication with email and password.
+- Google and Slack connection management with encrypted server-side tokens.
+- Workflow creation, editing, validation, version-conflict handling, and test runs.
+- Real adapters for Google Calendar, Google Sheets, Gmail, Google Drive, and Slack, with recorded fixtures for the verified behaviors documented in the task briefs.
+- Run orchestration, retry guards, attempt history, deterministic diagnosis rules, proposal persistence, approval enforcement, configuration restore, rate limits, and audit events.
+- Connections, workflow editor, run detail, result and restore, and manual-mode interfaces.
+- Drizzle schema for all 12 tables, integrity triggers, row-level security, and 28 database safety checks.
+- A test-only fake adapter for deterministic development and CI. It is never registered as a product integration.
+
+The current local baseline on `main` is 63 passing Vitest files and 749 passing tests. Three real-database suites are skipped unless the required scratch-database safeguards are enabled.
+
+## Remaining milestone work
+
+The Calendar milestone is not complete until the user can finish the entire guarded recovery journey. The main remaining work is:
+
+- **T19:** diagnosis and proposal interface, valid-option selection, approval dialog, reject/exit handling, and the handoff to the existing result view.
+- **T22 and T23:** real-model smoke verification and prompt tuning against the evaluation set. These tasks are owned by Dikshyant.
+- **T24:** expand the rules and AI evaluation set and wire its quality gates into CI.
+- **T28:** finish the remaining integration coverage for the eleven safety tests.
+- **T29:** fixture-based end-to-end coverage plus a live Calendar smoke checklist.
+- **T30 validation:** the usability kit and measurement materials are complete, but no participant sessions have been run and no usability target has been validated.
+- **T31 and T32:** production setup, vendor checks, live smoke runs, and launch verification.
+
+Task ownership, dependencies, acceptance criteria, and the most current per-task status live in [`docs/TASK_BRIEFS.md`](docs/TASK_BRIEFS.md). Search for `TODO(T` to find remaining implementation markers, but use the task brief—not TODO count alone—to decide whether a task is complete.
 
 ## Structure
 ```

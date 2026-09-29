@@ -45,7 +45,7 @@ async function applySecondChange(store: MemoryProposalStore): Promise<string> {
 }
 
 const restore = (store: MemoryProposalStore, changeId: string, over: Partial<Parameters<typeof restoreChange>[1]> = {}) =>
-  restoreChange({ store, now }, { changeId, userId: "user-1", ...over });
+  restoreChange({ store, now, restoreAttemptId: () => "restore-attempt-1" }, { changeId, userId: "user-1", ...over });
 
 describe("restoreChange: the exact before value comes back (safety test 6)", () => {
   it("puts the setting back exactly as it was and marks the change restored", async () => {
@@ -58,6 +58,10 @@ describe("restoreChange: the exact before value comes back (safety test 6)", () 
     expect(store.changes()[0]).toMatchObject({ id: changeId, status: "restored" });
     expect(store.changes()[0]!.restoredAt).toEqual(now());
     expect(store.events().map((e) => e.type)).toEqual(["proposal_decided", "change_applied", "restore_started", "restore_finished"]);
+    expect(store.events().slice(-2).map((e) => e.payload)).toEqual([
+      { config_change_id: changeId, restore_attempt_id: "restore-attempt-1" },
+      { config_change_id: changeId, restore_attempt_id: "restore-attempt-1", overwrote: false },
+    ]);
   });
 
   it("says plainly that it only reverts ZapFix settings", async () => {
@@ -163,7 +167,15 @@ describe("restoreChange is all-or-nothing", () => {
       await expect(restore(store, changeId)).rejects.toThrow();
       expect(store.workflow("wf-1")).toEqual(workflow);
       expect(store.changes()[0]!.status).toBe("applied");
-      expect(store.events()).toEqual(events);
+      if (point === "insertEvent") {
+        expect(store.events()).toEqual(events);
+      } else {
+        expect(store.events().slice(0, -1)).toEqual(events);
+        expect(store.events().at(-1)).toMatchObject({
+          type: "restore_started",
+          payload: { config_change_id: changeId, restore_attempt_id: "restore-attempt-1" },
+        });
+      }
     },
   );
 });

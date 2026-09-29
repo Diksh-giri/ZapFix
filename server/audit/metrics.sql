@@ -1,14 +1,28 @@
--- Saved SQL for the PRD success metrics (TDD Appendix F). Read only: run any one query by itself.
+-- Saved SQL for the PRD success metrics (TDD Appendix F).
+-- Before running a study metric, create and populate a session-local allowlist with ONLY the
+-- live-study run ids recorded in the scorecards. Queries intentionally fail if the allowlist is absent.
+--
+--   create temporary table study_run_ids (run_id uuid primary key) on commit preserve rows;
+--   insert into study_run_ids (run_id) values ('<run-id-from-scorecard>');
+--
+-- Clear and repopulate it for each reporting cohort. Fixture, smoke, internal and non-study runs
+-- must never be inserted. After setup, run any one named query by itself.
 
 -- name: approvals_with_change
 -- Every applied change must have an approved approval. The two counts should always match.
 select count(*) as applied_changes,
        count(*) filter (where a.decision = 'approved') as with_approved_approval
 from config_changes c
-join approvals a on a.id = c.approval_id;
+join approvals a on a.id = c.approval_id
+join proposals p on p.id = a.proposal_id
+join diagnoses d on d.id = p.diagnosis_id
+join step_attempts s on s.id = d.attempt_id
+join study_run_ids study on study.run_id = s.run_id;
 
 -- name: unapproved_changes
--- Workflows last modified by the debugger with no recorded change. Should return no rows.
+-- Diagnostic only: workflows currently marked as debugger-modified with no change record.
+-- An empty result cannot prove that zero unapproved changes occurred historically because workflows
+-- do not have an append-only mutation log. Do not use this query alone to claim the PRD target.
 select w.id as workflow_id
 from workflows w
 where w.last_modified_by = 'debugger'
@@ -22,6 +36,7 @@ from approvals a
 join proposals p on p.id = a.proposal_id
 join diagnoses d on d.id = p.diagnosis_id
 join step_attempts s on s.id = d.attempt_id
+join study_run_ids study on study.run_id = s.run_id
 join (
   select run_id, min(created_at) as opened_at
   from events
@@ -39,6 +54,7 @@ with runs_with_change as (
   join proposals p on p.id = a.proposal_id
   join diagnoses d on d.id = p.diagnosis_id
   join step_attempts s on s.id = d.attempt_id
+  join study_run_ids study on study.run_id = s.run_id
 ),
 latest as (
   select distinct on (s.run_id) s.run_id, s.status
@@ -58,13 +74,47 @@ select count(*) as resolved_runs,
        max(t.attempts - 1) as max_retries
 from (
   select run_id, count(*) as attempts
-  from step_attempts
-  group by run_id
+  from step_attempts s
+  join study_run_ids study on study.run_id = s.run_id
+  group by s.run_id
   having bool_or(status = 'succeeded') and count(*) > 1
 ) t;
 
 -- name: restore_success
--- Restores started and finished, and how many changes are now in the restored state. Target 100 percent.
-select (select count(*) from events where type = 'restore_started') as restores_started,
-       (select count(*) from events where type = 'restore_finished') as restores_finished,
-       (select count(*) from config_changes where status = 'restored') as changes_restored;
+-- Restore attempts correlated by the server-generated attempt id. Target 100 percent.
+with started as (
+  select distinct e.user_id,
+         e.run_id,
+         e.payload ->> 'restore_attempt_id' as restore_attempt_id,
+         e.payload ->> 'config_change_id' as config_change_id
+  from events e
+  join study_run_ids study on study.run_id = e.run_id
+  where e.type = 'restore_started'
+    and e.payload ->> 'restore_attempt_id' is not null
+),
+finished as (
+  select distinct e.user_id,
+         e.run_id,
+         e.payload ->> 'restore_attempt_id' as restore_attempt_id,
+         e.payload ->> 'config_change_id' as config_change_id
+  from events e
+  join study_run_ids study on study.run_id = e.run_id
+  where e.type = 'restore_finished'
+    and e.payload ->> 'restore_attempt_id' is not null
+)
+select count(*) as restores_started,
+       count(*) filter (where exists (
+         select 1 from finished f
+         where f.user_id = s.user_id
+           and f.run_id is not distinct from s.run_id
+           and f.restore_attempt_id = s.restore_attempt_id
+           and f.config_change_id = s.config_change_id
+       )) as restores_finished,
+       round(100.0 * count(*) filter (where exists (
+         select 1 from finished f
+         where f.user_id = s.user_id
+           and f.run_id is not distinct from s.run_id
+           and f.restore_attempt_id = s.restore_attempt_id
+           and f.config_change_id = s.config_change_id
+       )) / nullif(count(*), 0), 1) as restore_success_pct
+from started s;
