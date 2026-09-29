@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The service that processes this workflow step is temporarily unavailable or offline.",
+  "explanation": "The backend system that handles this step returned a 'Service unavailable' error, which typically means the service is down for maintenance, overwhelmed with requests, or experiencing technical problems. This is not a problem with your workflow setup or data.",
+  "selected_candidate_id": null,
+  "why_this_fix": "No candidate fixes were provided. This is a service availability issue that usually resolves on its own when the backend system recovers.",
+  "confidence": "low",
+  "uncertainty_note": "Without more details about the timing and frequency of this error, it's unclear if this is a temporary outage or a persistent problem that needs investigation."
+}
+```

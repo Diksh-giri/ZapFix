@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The date in the start field is not in the correct MM/DD/YYYY format.",
+  "explanation": "The workflow tried to send a date value to the system, but the date format doesn't match what was expected. The system requires dates in MM/DD/YYYY format (like 01/15/2024), but the value provided was either formatted differently or wasn't a valid date.",
+  "selected_candidate_id": null,
+  "why_this_fix": "No candidate fixes were provided. To resolve this, check that the date value uses MM/DD/YYYY format with valid month and day numbers.",
+  "confidence": "low",
+  "uncertainty_note": "Without seeing the actual date value that was sent, it's unclear if the issue is incorrect formatting, an invalid date, or a mismatch between how the source provides dates and what the system expects."
+}
+```

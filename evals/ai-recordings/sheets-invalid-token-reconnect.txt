@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The connection to the service has expired and authentication is no longer valid.",
+  "explanation": "The workflow tried to communicate with a service, but the stored credentials or session have expired. The service rejected the request because it no longer recognizes the authentication. This typically happens when a token or session times out after a period of inactivity.",
+  "selected_candidate_id": "reconnect",
+  "why_this_fix": "Reconnecting will refresh the authentication and establish a new valid session with the service, which may fix the expired credentials issue.",
+  "confidence": "high",
+  "uncertainty_note": null
+}
+```

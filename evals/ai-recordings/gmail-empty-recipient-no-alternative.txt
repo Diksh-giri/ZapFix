@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The email address field from the trigger is empty, so there is no recipient to send to.",
+  "explanation": "The step tried to send an email, but the 'to' field (recipient address) is empty. This field is supposed to get its value from a trigger field called 'email', but that field has no data in it. Without a recipient address, the email cannot be sent.",
+  "selected_candidate_id": null,
+  "why_this_fix": "No candidate fixes were provided. The issue needs either the trigger to provide an email address, or the step to use a different field that has an email address, or a fixed recipient to be set manually.",
+  "confidence": "low",
+  "uncertainty_note": "Without seeing what data the trigger actually provides or what other fields are available, I cannot be certain whether the trigger field itself is wrong, the data is missing, or a different approach is needed."
+}
+```

@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The note field being sent to the message is empty, so no text is available to send.",
+  "explanation": "Your workflow tried to send a message, but the text field is required and it came up empty. The workflow is set to use a field called \"note\" as the message text, but that note field has no content in it right now.",
+  "selected_candidate_id": "map:text:summary",
+  "why_this_fix": "Using the Summary field instead may fix it if Summary contains text when note does not. This provides an alternative source for the message content.",
+  "confidence": "high",
+  "uncertainty_note": null
+}
+```

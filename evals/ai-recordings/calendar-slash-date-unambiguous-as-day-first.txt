@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The date format being sent does not match what the system expects.",
+  "explanation": "The 'start' field is supposed to be a date in MM/DD/YYYY format, but the data being sent appears to be in a different format. The system rejected it as invalid because it could not read the date value correctly.",
+  "selected_candidate_id": "transform:start:DD/MM/YYYY",
+  "why_this_fix": "This candidate converts the date from DD/MM/YYYY to the correct format, which may fix the mismatch if your source data is actually in day-first format rather than month-first.",
+  "confidence": "medium",
+  "uncertainty_note": "We cannot see the actual date values being sent, so we do not know for certain whether they are in DD/MM/YYYY format or another format entirely. The fix assumes a specific format mismatch."
+}
+```

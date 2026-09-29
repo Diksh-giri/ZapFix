@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The recipient email address in the trigger field is not in a valid email format.",
+  "explanation": "The workflow tried to send a message to a recipient, but the email address provided doesn't follow the correct format. Email addresses need to have the right structure with an @ symbol and domain name. The system rejected it because it couldn't recognize it as a valid email.",
+  "selected_candidate_id": null,
+  "why_this_fix": "No candidate fixes were provided. To fix this, check that the recipient field contains a properly formatted email address (like name@example.com).",
+  "confidence": "low",
+  "uncertainty_note": "Without seeing the actual email address value or having suggested fixes, I cannot be certain what exactly is wrong or how to correct it. The issue could be a typo, missing characters, or an incorrect format."
+}
+```

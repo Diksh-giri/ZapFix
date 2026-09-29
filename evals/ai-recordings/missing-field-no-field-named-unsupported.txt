@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The email field from the trigger is empty, so the required attendee email could not be provided.",
+  "explanation": "The workflow step tried to use the email address from the trigger event, but that field was empty. Since an attendee email is required for this step to work, the step failed because there was no value to use.",
+  "selected_candidate_id": null,
+  "why_this_fix": "No candidates were provided. To fix this, you may need to check why the trigger event has an empty email field, or map a different field that contains an email address.",
+  "confidence": "low",
+  "uncertainty_note": "Without knowing what the trigger event is or what other fields are available, it's hard to say exactly how to fix this. The issue could be in how the trigger is set up or in how the field is being mapped."
+}
+```

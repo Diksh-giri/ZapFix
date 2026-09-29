@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The recipient email address field is empty when the workflow tried to send an email.",
+  "explanation": "The workflow needs an email address to send to, but the \"to\" field is blank. The workflow is currently trying to use a trigger field called \"email\" for this, but that field has no value. There is an alternative field available called \"Work email\" that could be used instead.",
+  "selected_candidate_id": "map:to:work_email",
+  "why_this_fix": "Using the Work email field may provide a populated email address where the current trigger field is empty, allowing the email to be sent.",
+  "confidence": "high",
+  "uncertainty_note": null
+}
+```

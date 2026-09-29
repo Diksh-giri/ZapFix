@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The date field was sent in a format the system does not accept.",
+  "explanation": "The workflow tried to use a date value in MM/DD/YYYY format, but the system rejected it as a bad request. This usually means the system expects a different date format or the date value itself was invalid.",
+  "selected_candidate_id": null,
+  "why_this_fix": "No candidate fixes were provided. The issue likely requires changing how the date is formatted or validating the date value before sending it.",
+  "confidence": "low",
+  "uncertainty_note": "Without seeing the actual date value or knowing what format the system expects, it is unclear whether the problem is the format (MM/DD/YYYY may not be supported) or an invalid date itself."
+}
+```

@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The start date is in the wrong format for what the system expects.",
+  "explanation": "The workflow tried to use a date from a trigger field, but the date format doesn't match what the system needs. The date appears to be in MM/DD/YYYY format, but the system may be interpreting it differently or expecting a different date format entirely.",
+  "selected_candidate_id": "transform:start:MM/DD/YYYY",
+  "why_this_fix": "This candidate may fix it by converting the start date to the standard format the system requires. It assumes the date is currently in MM/DD/YYYY format and transforms it accordingly.",
+  "confidence": "medium",
+  "uncertainty_note": "We cannot be certain whether the date is actually in MM/DD/YYYY or DD/MM/YYYY format without seeing the actual value, so the first candidate is an educated guess based on common US formatting."
+}
+```

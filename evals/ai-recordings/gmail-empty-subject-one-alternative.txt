@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The subject field is empty because the trigger field 'topic' has no value.",
+  "explanation": "The workflow tried to send an email, but the subject line is blank. The subject is currently set to pull from a field called 'topic', which is empty. The body and recipient are working fine, but an email needs a subject to send.",
+  "selected_candidate_id": "map:subject:message",
+  "why_this_fix": "Using the 'Message' field for the subject may fix this if that field has content. The 'Headline' field is not shown in your workflow data, so 'Message' is the safer choice.",
+  "confidence": "medium",
+  "uncertainty_note": "We don't know if 'Message' actually contains a value, or if neither candidate field has content. The best fix depends on your actual data."
+}
+```

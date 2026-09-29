@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The workflow is trying to use a field called \"title\" as the file name, but that field is empty.",
+  "explanation": "The step needs a file name to work, but the current setup pulls from a field called \"title\" which has no value in this case. The file name field is empty because the source it's mapped to (the trigger field \"title\") is empty.",
+  "selected_candidate_id": "map:name:backup_name",
+  "why_this_fix": "If \"Backup name\" is available and typically has a value, using it instead of \"title\" may provide the missing file name. However, \"File name\" field might also work if that source is populated.",
+  "confidence": "medium",
+  "uncertainty_note": "It's unclear whether \"Backup name\" or \"File name\" will have a value in your actual data. Neither candidate fully explains what these fields map to, so the best choice depends on your workflow's data."
+}
+```

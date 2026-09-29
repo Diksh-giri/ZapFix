@@ -1,0 +1,54 @@
+[
+  {
+    "id": "slack-invalid-token-reconnect",
+    "note": "From tests/fixtures/slack/invalid_token.json.",
+    "input": {
+      "error": { "category_hint": "auth", "code": "invalid_auth", "message": "The Slack connection is not valid any more. Reconnect Slack and try again.", "retryable": false, "outcome": "not_executed" },
+      "config": { "channel": { "kind": "static", "value": "#general-test" }, "text": { "kind": "static", "value": "Deploy finished" } },
+      "resolved": {},
+      "triggerData": {},
+      "triggerSchema": { "fields": [{ "key": "value", "label": "Value", "type": "text" }] },
+      "actionFields": []
+    },
+    "expected": { "category": "expired_connection", "supported": true, "candidateIds": ["reconnect"], "ceiling": "high" }
+  },
+  {
+    "id": "gmail-invalid-token-reconnect",
+    "note": "From tests/fixtures/gmail/invalid_token.json.",
+    "input": {
+      "error": { "category_hint": "auth", "code": "authError", "message": "Invalid Credentials", "retryable": false, "outcome": "not_executed" },
+      "config": { "to": { "kind": "static", "value": "test@example.com" } },
+      "resolved": {},
+      "triggerData": {},
+      "triggerSchema": { "fields": [{ "key": "value", "label": "Value", "type": "text" }] },
+      "actionFields": []
+    },
+    "expected": { "category": "expired_connection", "supported": true, "candidateIds": ["reconnect"], "ceiling": "high" }
+  },
+  {
+    "id": "drive-invalid-token-reconnect",
+    "note": "From tests/fixtures/google-drive/invalid_token.json.",
+    "input": {
+      "error": { "category_hint": "auth", "code": "authError", "message": "Invalid Credentials", "retryable": false, "outcome": "not_executed" },
+      "config": { "name": { "kind": "static", "value": "notes.txt" } },
+      "resolved": {},
+      "triggerData": {},
+      "triggerSchema": { "fields": [{ "key": "value", "label": "Value", "type": "text" }] },
+      "actionFields": []
+    },
+    "expected": { "category": "expired_connection", "supported": true, "candidateIds": ["reconnect"], "ceiling": "high" }
+  },
+  {
+    "id": "sheets-invalid-token-reconnect",
+    "note": "From tests/fixtures/google-sheets/invalid_token.json.",
+    "input": {
+      "error": { "category_hint": "auth", "code": "http_401", "message": "Request had invalid authentication credentials.", "retryable": false, "outcome": "not_executed" },
+      "config": { "row_values": { "kind": "static", "value": "a,b,c" } },
+      "resolved": {},
+      "triggerData": {},
+      "triggerSchema": { "fields": [{ "key": "value", "label": "Value", "type": "text" }] },
+      "actionFields": []
+    },
+    "expected": { "category": "expired_connection", "supported": true, "candidateIds": ["reconnect"], "ceiling": "high" }
+  }
+]

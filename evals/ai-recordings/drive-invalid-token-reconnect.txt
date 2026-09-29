@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The connection to the app has expired and needs to be refreshed with current credentials.",
+  "explanation": "The workflow tried to use a saved connection that is no longer valid. This happens when authentication tokens or sessions expire over time. The system rejected the attempt because the stored credentials are outdated.",
+  "selected_candidate_id": "reconnect",
+  "why_this_fix": "Reconnecting will establish a fresh, valid connection with current credentials, replacing the expired authentication.",
+  "confidence": "high",
+  "uncertainty_note": null
+}
+```

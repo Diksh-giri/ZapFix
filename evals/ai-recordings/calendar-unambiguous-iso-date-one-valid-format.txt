@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The start date is not in the correct format that the system expects.",
+  "explanation": "The workflow tried to use a date for the 'start' field, but it was not formatted correctly. The system needs dates in a specific format (YYYY-MM-DD), and what was sent didn't match that pattern.",
+  "selected_candidate_id": "transform:start:YYYY-MM-DD",
+  "why_this_fix": "This candidate converts the start date to the proper format the system needs, which may resolve the format error.",
+  "confidence": "high",
+  "uncertainty_note": null
+}
+```

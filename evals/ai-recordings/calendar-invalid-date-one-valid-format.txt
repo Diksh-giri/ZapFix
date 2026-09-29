@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The start date is in MM/DD/YYYY format but the system expects RFC 3339 format.",
+  "explanation": "The workflow is trying to use a date from a trigger field, but it's formatted as MM/DD/YYYY (like 12/25/2024). The system that receives this date needs it in a different format called RFC 3339 (like 2024-12-25T00:00:00Z). This mismatch causes the request to fail.",
+  "selected_candidate_id": "transform:start:MM/DD/YYYY",
+  "why_this_fix": "This candidate converts the date from MM/DD/YYYY to RFC 3339 format, which should make the start field acceptable to the system.",
+  "confidence": "high",
+  "uncertainty_note": null
+}
+```

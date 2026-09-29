@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The channel name or ID you provided does not exist in your Slack workspace.",
+  "explanation": "The workflow tried to send a message to a Slack channel, but Slack could not find a channel with that name or ID. This usually happens when the channel was deleted, the name was typed incorrectly, or you don't have access to it.",
+  "selected_candidate_id": null,
+  "why_this_fix": "No candidate fixes were provided. You should verify the channel name exists and that you have permission to access it.",
+  "confidence": "low",
+  "uncertainty_note": "Without access to the actual channel value, I cannot confirm whether it's a typo, a deleted channel, or a permissions issue. Check your Slack workspace to confirm the channel exists."
+}
+```

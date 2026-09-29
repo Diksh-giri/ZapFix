@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The event title field is empty because it's pulling from a trigger field called \"topic\" that has no value.",
+  "explanation": "The workflow tried to create an event but the title is required. Right now, the title is supposed to come from a field called \"topic\" in the trigger, but that field is empty. The other fields like start time, end time, and attendee email have fixed values set, so they're fine.",
+  "selected_candidate_id": "map:title:headline",
+  "why_this_fix": "Using \"Headline\" instead may fix it if that field contains a value, since the current \"topic\" field is empty.",
+  "confidence": "high",
+  "uncertainty_note": null
+}
+```
