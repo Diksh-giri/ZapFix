@@ -37,6 +37,7 @@ export function getRunEngine() {
         connectionId,
         userId,
       ),
+    markConnectionNeedsReconnect: (connectionId, errorCode) => connections.markNeedsReconnect(connectionId, errorCode),
     checkRateLimit: enforceRateLimit,
     recordEvent: (e) => recordEvent(audit, e),
     now: () => new Date(),

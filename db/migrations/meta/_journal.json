@@ -15,6 +15,13 @@
       "when": 1790265522700,
       "tag": "0001_integrity_and_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790692404235,
+      "tag": "0002_early_triton",
+      "breakpoints": true
     }
   ]
 }

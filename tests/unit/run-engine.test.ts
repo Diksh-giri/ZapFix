@@ -30,6 +30,8 @@ let rateLimited = false;
 let rateCalls: Array<[string, string]> = [];
 let emitted: Array<{ type: string; runId: string; payload: Record<string, unknown> }> = [];
 const tokenCalls: Array<[string, string]> = [];
+let reconnectCalls: Array<[string, string]> = [];
+let reconnectWriteFails = false;
 
 function engine(adapter: AppAdapter = fakeAdapter) {
   return createRunEngine({
@@ -38,6 +40,10 @@ function engine(adapter: AppAdapter = fakeAdapter) {
     getAccessToken: async (connectionId, userId) => {
       tokenCalls.push([connectionId, userId]);
       return tokenResult ?? { ok: true, accessToken: token };
+    },
+    markConnectionNeedsReconnect: async (connectionId, errorCode) => {
+      if (reconnectWriteFails) throw new Error("db unavailable");
+      reconnectCalls.push([connectionId, errorCode]);
     },
     checkRateLimit: async (userId, bucket) => {
       rateCalls.push([userId, bucket]);
@@ -60,6 +66,8 @@ beforeEach(() => {
   rateCalls = [];
   emitted = [];
   tokenCalls.length = 0;
+  reconnectCalls = [];
+  reconnectWriteFails = false;
   store = createMemoryRunStore();
   store.seedWorkflow({
     id: "wf-1",
@@ -292,6 +300,46 @@ describe("connection problems (T9 getAccessToken results)", () => {
   it("requires a connection on the workflow", async () => {
     store.setConnectionStatus("wf-1", "none");
     await expect(engine().startRun("wf-1", USER, goodTrigger)).rejects.toMatchObject({ code: "no_active_connection" });
+  });
+
+  it("marks the connection needs_reconnect when the app itself rejects the call as an auth failure (e.g. Slack, which has no refresh step to catch this earlier)", async () => {
+    const execute = vi.fn(async () => ({
+      ok: false as const,
+      error: {
+        category_hint: "auth" as const,
+        code: "invalid_auth",
+        message: "The Slack connection is not valid any more.",
+        retryable: false,
+        outcome: "not_executed" as const,
+      },
+      requestSummary: {},
+    }));
+    const run = await engine({ ...fakeAdapter, execute }).startRun("wf-1", USER, goodTrigger);
+    expect(run.status).toBe("failed");
+    expect(reconnectCalls).toEqual([["conn-1", "invalid_auth"]]);
+  });
+
+  it("does not mark needs_reconnect for a non-auth failure", async () => {
+    await engine().startRun("wf-1", USER, { ...goodTrigger, email: "" });
+    expect(reconnectCalls).toEqual([]);
+  });
+
+  it("does not let a failing needs_reconnect write break the run", async () => {
+    reconnectWriteFails = true;
+    const execute = vi.fn(async () => ({
+      ok: false as const,
+      error: {
+        category_hint: "auth" as const,
+        code: "invalid_auth",
+        message: "The Slack connection is not valid any more.",
+        retryable: false,
+        outcome: "not_executed" as const,
+      },
+      requestSummary: {},
+    }));
+    const run = await engine({ ...fakeAdapter, execute }).startRun("wf-1", USER, goodTrigger);
+    expect(run.status).toBe("failed");
+    expect(store.attempts(run.id)[0]?.errorStd).toMatchObject({ category_hint: "auth", code: "invalid_auth" });
   });
 });
 

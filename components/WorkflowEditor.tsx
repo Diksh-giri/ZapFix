@@ -26,6 +26,7 @@ export function returnToWorkflowEditor(
 
 export function WorkflowEditor({ workflowId }: { workflowId: string }) {
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [loadError, setLoadError] = useState<WorkflowRequestError | null>(null);
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
   const [apps, setApps] = useState<AppCatalogItem[]>([]);
   const [name, setName] = useState("");
@@ -41,8 +42,11 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
     try {
       const [item, setup] = await Promise.all([loadWorkflow(workflowId), loadWorkflowSetup()]);
       setWorkflow(item); setApps(setup.apps); setName(item.name); setConfig(item.actionConfig);
-      setStatus("ready"); setError(null);
-    } catch { setStatus("error"); }
+      setStatus("ready"); setError(null); setLoadError(null);
+    } catch (caught) {
+      setLoadError(caught instanceof WorkflowRequestError ? caught : null);
+      setStatus("error");
+    }
   }, [workflowId]);
   useEffect(() => {
     // The editor owns this client-side request; state updates happen only after the promises settle.
@@ -73,9 +77,21 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
   }
 
   if (status === "loading") return <StatePanel state="loading" title="Loading workflow" description="Getting the latest saved version." />;
-  if (status === "error" || !workflow) return (
-    <StatePanel state="error" title="This workflow could not be loaded" description="Your saved workflow was not changed." action={<Button variant="outline" onClick={() => { setStatus("loading"); void refreshWorkflow(); }}>Try again</Button>} />
-  );
+  if (status === "error" || !workflow) {
+    if (loadError?.code === "no_active_connection") {
+      return (
+        <StatePanel
+          state="error"
+          title="This workflow needs a connection"
+          description="Its connection was removed. Reconnect the app, then come back to this workflow to pick it again."
+          action={<Link href="/connections"><Button variant="outline">Go to connections</Button></Link>}
+        />
+      );
+    }
+    return (
+      <StatePanel state="error" title="This workflow could not be loaded" description="Your saved workflow was not changed." action={<Button variant="outline" onClick={() => { setStatus("loading"); void refreshWorkflow(); }}>Try again</Button>} />
+    );
+  }
 
   return (
     <div className="space-y-6">

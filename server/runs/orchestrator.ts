@@ -16,6 +16,14 @@ export interface RunEngineDeps {
   getAdapter: (app: AppId) => AppAdapter;
   /** T9's getAccessToken, bound to its dependencies. Returns a typed result; never log the token. */
   getAccessToken: (connectionId: string, userId: string) => Promise<AccessTokenResult>;
+  /**
+   * Marks a connection needs_reconnect after the app itself rejects the call as an auth failure
+   * (category_hint "auth"). Google's own refresh already does this before a call is ever made
+   * (T9's getAccessToken); providers with no refresh step, such as Slack, only find out their
+   * token is dead here, from a real response. Optional and best effort: a failing write never
+   * breaks a run, and it must never throw into executeAttempt.
+   */
+  markConnectionNeedsReconnect?: (connectionId: string, errorCode: string) => Promise<void>;
   /** T15's checkRateLimit, bound to its store. Throws AppError("rate_limited") over the limit. */
   checkRateLimit: (userId: string, bucket: RateBucket) => Promise<void>;
   /** Optional, best effort: a failing event write never breaks a run. Payloads hold ids and enums only. */
@@ -127,6 +135,13 @@ export function createRunEngine(deps: RunEngineDeps) {
         errorStd: { ...result.error, message },
         errorRaw: { code: result.error.code, message },
       });
+      if (result.error.category_hint === "auth" && wf.connectionId) {
+        try {
+          await deps.markConnectionNeedsReconnect?.(wf.connectionId, result.error.code);
+        } catch {
+          // best effort: the failed attempt is already recorded either way
+        }
+      }
     }
     return (await store.getRun(run.id)) ?? run;
   }

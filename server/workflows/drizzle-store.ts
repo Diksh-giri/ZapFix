@@ -12,8 +12,13 @@ type Database = PostgresJsDatabase<typeof schema>;
 function asWorkflow(row: typeof workflows.$inferSelect): WorkflowRecord {
   const triggerSchema = TriggerSchemaSchema.safeParse(row.triggerSchema);
   const actionConfig = ActionConfigSchema.safeParse(row.actionConfig);
-  if (!triggerSchema.success || !actionConfig.success || !row.connectionId) {
+  if (!triggerSchema.success || !actionConfig.success) {
     throw new AppError("internal", "This workflow's settings are not valid.");
+  }
+  // Its connection was disconnected (workflows.connection_id ON DELETE SET NULL): a normal,
+  // expected state, not corruption. The tester needs to pick a connection again.
+  if (!row.connectionId) {
+    throw new AppError("no_active_connection", "This workflow's connection was removed. Choose a connection to keep editing.");
   }
   return {
     id: row.id,
@@ -54,7 +59,18 @@ export function createDrizzleWorkflowStore(db: Database): WorkflowStore {
         .from(workflows)
         .where(eq(workflows.userId, userId))
         .orderBy(desc(workflows.updatedAt));
-      return rows.map(asWorkflow);
+      // A single workflow with no connection (or invalid settings) must not take the whole
+      // list down for every other, healthy workflow. Its own GET /api/workflows/{id} still
+      // surfaces the real reason when the tester opens it directly.
+      const out: WorkflowRecord[] = [];
+      for (const row of rows) {
+        try {
+          out.push(asWorkflow(row));
+        } catch {
+          // skipped, see above
+        }
+      }
+      return out;
     },
 
     async get(id, userId) {
