@@ -13,6 +13,9 @@ Failure → diagnosis → proposed change → human approval → retry (and rest
 | [docs/DECISIONS.md](docs/DECISIONS.md) | The 34 locked decisions. Changing one needs both of you to agree |
 | [docs/TEAM_SPLIT.md](docs/TEAM_SPLIT.md) | Who owns what, and the contracts between the two lanes |
 | [docs/WORKING_AGREEMENT.md](docs/WORKING_AGREEMENT.md) | How we work: branches, reviews, safety rules |
+| [docs/USABILITY_TEST_KIT.md](docs/USABILITY_TEST_KIT.md) | T30 moderator guide, participant tasks, safety briefing and study workflow |
+| [docs/USABILITY_PARTICIPANT_SURVEY.md](docs/USABILITY_PARTICIPANT_SURVEY.md) | Reusable post-task participant survey |
+| [docs/USABILITY_SESSION_SCORECARD.md](docs/USABILITY_SESSION_SCORECARD.md) | Per-session scorecard and aggregate worksheet for the eight PRD targets |
 
 ## Getting started
 ```bash
@@ -73,7 +76,7 @@ The Calendar milestone is not complete until the user can finish the entire guar
 - **T24:** expand the rules and AI evaluation set and wire its quality gates into CI.
 - **T28:** finish the remaining integration coverage for the eleven safety tests.
 - **T29:** fixture-based end-to-end coverage plus a live Calendar smoke checklist.
-- **T30:** usability test kit and measurement materials for the PRD targets.
+- **T30 validation:** the usability kit and measurement materials are complete, but no participant sessions have been run and no usability target has been validated.
 - **T31 and T32:** production setup, vendor checks, live smoke runs, and launch verification.
 
 Task ownership, dependencies, acceptance criteria, and the most current per-task status live in [`docs/TASK_BRIEFS.md`](docs/TASK_BRIEFS.md). Search for `TODO(T` to find remaining implementation markers, but use the task brief—not TODO count alone—to decide whether a task is complete.
