@@ -264,6 +264,7 @@ Must all pass in CI before testers are invited. Status today in brackets.
 11. An `uncertain` attempt cannot be retried without confirmation [unit done; add integration test after T12]
 
 ### T29. End-to-end tests (J, M)
+**Status:** Calendar fixture infrastructure and the authenticated Playwright recovery suite are complete on branch `j/T29-full-recovery-e2e`: guarded dedicated-user setup, recorded Calendar and AI fixtures, database seeding, approve → retry → restore coverage, rejection coverage, and non-default option coverage. The suite refuses to seed without `CONFIRM_E2E=yes`. Slack and Sheets browser flows and the separate live smoke checklist remain.
 Playwright: connect a **test** Google account, run the deliberately broken workflow, diagnose, approve, retry, restore; Calendar first, then Slack, then Sheets. CI uses recorded fixtures (no live calls). Keep a manual "live smoke" checklist: one real run per app before each release.
 
 ### T30. Usability test kit (J, S)

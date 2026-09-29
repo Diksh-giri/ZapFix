@@ -54,6 +54,12 @@ At sign-in ZapFix checks the password with Supabase first, then the invite. A wr
 | `npm run db:workflow-smoke -- --confirm --user-id <uuid> --connection-id <uuid>` | Non-destructive T10 persistence smoke test using an existing test user and Google connection |
 | `npm run db:generate` / `db:migrate` | Create and apply Drizzle migrations |
 
+The Playwright suite requires a dedicated invited Supabase user that has never connected a real
+Google or Slack account. Set `E2E_TEST_EMAIL`, `E2E_TEST_PASSWORD`, and `CONFIRM_E2E=yes` in
+`.env.local`. Setup deletes only that user's `e2e:%` workflows, seeds fake encrypted tokens, and
+starts the app with recorded external-app and AI fixtures; it never calls Google, Slack, or
+Anthropic.
+
 ## Current project state
 
 The foundation and most of the Calendar recovery path are implemented:
