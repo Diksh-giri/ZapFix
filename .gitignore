@@ -152,3 +152,7 @@ next-env.d.ts
 *.tsbuildinfo
 playwright-report/
 test-results/
+tests/e2e/.e2e-state.json
+
+# Local Claude Code config (permissions, browser launch)
+/.claude/

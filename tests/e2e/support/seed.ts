@@ -21,12 +21,17 @@ function getTokenKey(): { key: Buffer; version: number } {
 }
 
 /**
- * Seeds one broken Calendar workflow, and its Google/Slack connections, for the e2e test user
- * (T29). Never goes through real OAuth: the connections' tokens are fake values the fixture-mocked
- * adapter (tests/e2e/support/fixture-fetch.ts) never actually sends anywhere. The Google token's
- * expiry is set far in the future so getAccessToken() skips the refresh call entirely (which
- * would otherwise hit Google's real token endpoint -- there is no fixture for that, by design,
- * since no e2e scenario needs a token refresh).
+ * Seeds one broken workflow per app (Calendar, Sheets, Slack), and their Google/Slack
+ * connections, for the e2e test user (T29). Never goes through real OAuth: the connections'
+ * tokens are fake values the fixture-mocked adapter (tests/e2e/support/fixture-fetch.ts) never
+ * actually sends anywhere. The Google token's expiry is set far in the future so getAccessToken()
+ * skips the refresh call entirely (which would otherwise hit Google's real token endpoint --
+ * there is no fixture for that, by design, since no e2e scenario needs a token refresh).
+ *
+ * Sheets is a manual-mode scenario, not a fixable one: real recorded calls (tests/fixtures/
+ * google-sheets/) confirmed none of Sheets' actual failure shapes match a rule that proposes a
+ * fix (see SHEETS_ACTION_CONFIG's comment), so its e2e spec verifies manual mode, not an approve/
+ * retry/restore loop.
  *
  * SAFETY: the unique constraint on connections is (userId, provider) -- one Google and one Slack
  * connection per user, period. Run this against the wrong user id and it does not create a
@@ -36,7 +41,8 @@ function getTokenKey(): { key: Buffer; version: number } {
  * CI/e2e test user that has never connected a real Google or Slack account.
  *
  * Run standalone: npx tsx tests/e2e/support/seed.ts --user-id <uuid> --confirm
- * Playwright's global setup imports seedCalendarWorkflow() directly instead.
+ * Playwright's global setup imports seedCalendarWorkflow()/seedSheetsWorkflow()/seedSlackWorkflow()
+ * directly instead.
  */
 export interface SeededCalendar {
   workflowId: string;
@@ -53,6 +59,9 @@ const TRIGGER_SCHEMA: TriggerSchema = {
     { key: "title", label: "Title", type: "text" },
     { key: "email", label: "Email", type: "email" },
     { key: "contact_email", label: "Contact email", type: "email" },
+    // A second real alternative, filled only by the "choose a non-default option" scenario --
+    // the other two scenarios leave it blank, keeping their candidate list at just contact_email.
+    { key: "work_email", label: "Work email", type: "email" },
   ],
 };
 
@@ -61,6 +70,34 @@ const ACTION_CONFIG: ActionConfig = {
   start: { kind: "static", value: "2030-06-15T10:00:00Z" },
   end: { kind: "static", value: "2030-06-15T11:00:00Z" },
   attendee_email: { kind: "mapped", source: "email" },
+};
+
+const SLACK_TRIGGER_SCHEMA: TriggerSchema = {
+  fields: [
+    { key: "channel", label: "Channel", type: "text" },
+    { key: "backup_channel", label: "Backup channel", type: "text" },
+  ],
+};
+
+const SLACK_ACTION_CONFIG: ActionConfig = {
+  text: { kind: "static", value: "ZapFix e2e test message" },
+  channel: { kind: "mapped", source: "channel" },
+};
+
+/**
+ * Deliberately broken: spreadsheet_id is a fixed empty value. Unlike Calendar and Slack, this is
+ * NOT a "missing field, one alternative" scenario -- real Google Sheets calls confirmed (recorded
+ * in tests/fixtures/google-sheets/) that ZapFix's current rules cannot propose a fix for this
+ * failure at all, so the recovery loop for Sheets ends in manual mode, not an approved change.
+ */
+// TriggerSchemaSchema requires at least one field; this one is unused by SHEETS_ACTION_CONFIG
+// (every action field is static below), it only satisfies the run form having something to submit.
+const SHEETS_TRIGGER_SCHEMA: TriggerSchema = { fields: [{ key: "note", label: "Note", type: "text" }] };
+
+const SHEETS_ACTION_CONFIG: ActionConfig = {
+  spreadsheet_id: { kind: "static", value: "" },
+  sheet_name: { kind: "static", value: "Sheet1" },
+  values: { kind: "static", value: "ZapFix e2e test row" },
 };
 
 function client() {
@@ -101,7 +138,7 @@ async function ownedE2eConnectionId(
   return created.id;
 }
 
-export async function seedCalendarWorkflow(userId: string): Promise<SeededCalendar> {
+export async function seedCalendarWorkflow(userId: string, nameSuffix = ""): Promise<SeededCalendar> {
   const db = client();
   const { key, version } = getTokenKey();
 
@@ -121,7 +158,7 @@ export async function seedCalendarWorkflow(userId: string): Promise<SeededCalend
     .insert(workflows)
     .values({
       userId,
-      name: "e2e: broken Calendar event",
+      name: `e2e: broken Calendar event${nameSuffix ? ` (${nameSuffix})` : ""}`,
       app: "google_calendar",
       actionKey: "create_event",
       connectionId,
@@ -132,6 +169,25 @@ export async function seedCalendarWorkflow(userId: string): Promise<SeededCalend
   if (!workflow) throw new Error("Could not create the e2e Calendar workflow.");
 
   return { workflowId: workflow.id, connectionId };
+}
+
+export interface SeededCalendarScenarios {
+  recovery: SeededCalendar;
+  rejection: SeededCalendar;
+  alternate: SeededCalendar;
+}
+
+/**
+ * Three separate Calendar workflow rows, not one reused across three runs: reusing one would let
+ * proposal/config-version state from an earlier scenario leak into the next (e.g. the reject
+ * scenario's decided proposal, or repair_count) and make cross-test interference possible when
+ * Playwright runs these in the same worker in sequence.
+ */
+export async function seedCalendarScenarios(userId: string): Promise<SeededCalendarScenarios> {
+  const recovery = await seedCalendarWorkflow(userId, "recovery");
+  const rejection = await seedCalendarWorkflow(userId, "rejection");
+  const alternate = await seedCalendarWorkflow(userId, "alternate");
+  return { recovery, rejection, alternate };
 }
 
 export async function seedSlackConnection(userId: string): Promise<{ connectionId: string }> {
@@ -149,6 +205,60 @@ export async function seedSlackConnection(userId: string): Promise<{ connectionI
   return { connectionId };
 }
 
+/**
+ * Seeds one broken Slack message workflow for the e2e test user: "Channel" is mapped from an
+ * always-blank trigger field, with "Backup channel" as the one real alternative -- the same
+ * missing-field-with-one-alternative shape as the Calendar workflow, matching the recorded AI
+ * reply in evals/ai-recordings/slack-empty-channel-one-alternative.txt.
+ */
+export async function seedSlackWorkflow(userId: string): Promise<SeededCalendar> {
+  const db = client();
+  const { connectionId } = await seedSlackConnection(userId);
+
+  const [workflow] = await db
+    .insert(workflows)
+    .values({
+      userId,
+      name: "e2e: broken Slack message",
+      app: "slack",
+      actionKey: "post_message",
+      connectionId,
+      triggerSchema: SLACK_TRIGGER_SCHEMA,
+      actionConfig: SLACK_ACTION_CONFIG,
+    })
+    .returning({ id: workflows.id });
+  if (!workflow) throw new Error("Could not create the e2e Slack workflow.");
+
+  return { workflowId: workflow.id, connectionId };
+}
+
+/**
+ * Seeds one broken Sheets workflow for the e2e test user, reusing the same Google connection as
+ * Calendar (one connection per user per provider). No fix is possible for this failure with
+ * today's rules -- see SHEETS_ACTION_CONFIG's comment -- so this exercises manual mode, not an
+ * approved change.
+ */
+export async function seedSheetsWorkflow(userId: string): Promise<SeededCalendar> {
+  const db = client();
+  const connectionId = await ownedE2eConnectionId(db, userId, "google");
+
+  const [workflow] = await db
+    .insert(workflows)
+    .values({
+      userId,
+      name: "e2e: broken Sheets row",
+      app: "google_sheets",
+      actionKey: "append_row",
+      connectionId,
+      triggerSchema: SHEETS_TRIGGER_SCHEMA,
+      actionConfig: SHEETS_ACTION_CONFIG,
+    })
+    .returning({ id: workflows.id });
+  if (!workflow) throw new Error("Could not create the e2e Sheets workflow.");
+
+  return { workflowId: workflow.id, connectionId };
+}
+
 if (require.main === module) {
   const args = process.argv.slice(2);
   const userId = args[args.indexOf("--user-id") + 1];
@@ -158,8 +268,9 @@ if (require.main === module) {
     console.error("This must be a dedicated e2e/CI test user that has never connected a real Google or Slack account.");
     process.exit(1);
   }
-  seedCalendarWorkflow(userId)
-    .then((result) => seedSlackConnection(userId).then((slack) => ({ ...result, ...slack })))
+  seedCalendarScenarios(userId)
+    .then((calendar) => seedSheetsWorkflow(userId).then((sheets) => ({ calendar, sheets })))
+    .then((result) => seedSlackWorkflow(userId).then((slack) => ({ ...result, slack })))
     .then((result) => {
       console.log("Seeded:", result);
       process.exit(0);

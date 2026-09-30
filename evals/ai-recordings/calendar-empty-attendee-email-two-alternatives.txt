@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The attendee email field is empty or contains an invalid email address.",
+  "explanation": "The workflow tried to create an event with an attendee, but the email address provided was empty or not in a valid email format. The field currently maps to a trigger field called \"email\" which appears to be empty or malformed.",
+  "selected_candidate_id": "map:attendee_email:contact_email",
+  "why_this_fix": "Mapping to \"Contact email\" instead of the current \"email\" field may provide a valid email address. If that doesn't work, \"Work email\" could be tried as an alternative.",
+  "confidence": "medium",
+  "uncertainty_note": "We don't know why the current email field is empty—it could be missing data, or the wrong field is being used. Either candidate might work depending on your data."
+}
+```

@@ -1,0 +1,26 @@
+{
+  "scenario": "success",
+  "description": "A row is appended to a test sheet, then cleared.",
+  "recorded_at": "2026-09-29",
+  "request_shape": {
+    "spreadsheet_id": "provided",
+    "sheet_name": "provided",
+    "values": "provided"
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "spreadsheetId": "[spreadsheetId]",
+      "updates": {
+        "spreadsheetId": "[spreadsheetId]",
+        "updatedRange": "[updatedRange]",
+        "updatedRows": 1,
+        "updatedColumns": 2,
+        "updatedCells": 2
+      }
+    }
+  },
+  "mapped": {
+    "ok": true
+  }
+}

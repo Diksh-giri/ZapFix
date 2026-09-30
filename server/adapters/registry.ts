@@ -6,6 +6,7 @@ import { createGoogleSheetsAdapter, googleSheetsAdapter } from "./google-sheets"
 import { gmailAdapter } from "./gmail";
 import { googleDriveAdapter } from "./google-drive";
 import { AppError } from "@/lib/errors";
+import { e2eFixtureModeEnabled } from "@/server/e2e-fixture-mode";
 // T29: e2e tests exercise the real adapters against recorded fixtures instead of live Google/Slack
 // calls. This has no side effect at import time (it just defines a function reading local fixture
 // files); it only ever runs when E2E_FIXTURE_ADAPTERS=1, set solely by the e2e Playwright job.
@@ -28,7 +29,7 @@ const fixtureAdapters: Record<AppId, AppAdapter> = {
 };
 
 function activeAdapters(): Record<AppId, AppAdapter> {
-  return process.env.E2E_FIXTURE_ADAPTERS === "1" ? fixtureAdapters : adapters;
+  return e2eFixtureModeEnabled() ? fixtureAdapters : adapters;
 }
 
 export function getAdapter(app: AppId): AppAdapter {

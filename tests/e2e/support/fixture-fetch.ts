@@ -14,7 +14,10 @@ interface FixtureFile {
 }
 
 function readFixture(app: string, scenario: string): FixtureFile["response"] {
-  const filePath = path.join(__dirname, "..", "..", "fixtures", app, `${scenario}.json`);
+  // process.cwd(), not __dirname: this module is imported by server/adapters/registry.ts, which
+  // Next.js bundles into its own server build -- __dirname there points into that build's output,
+  // not this source file's real location. The dev server's cwd is reliably the project root.
+  const filePath = path.join(process.cwd(), "tests", "fixtures", app, `${scenario}.json`);
   const parsed = JSON.parse(readFileSync(filePath, "utf8")) as FixtureFile;
   return parsed.response;
 }
@@ -52,6 +55,13 @@ export const fixtureFetch: typeof fetch = async (input, init) => {
     if (!channel) return jsonResponse(readFixture("slack", "empty_channel"));
     if (!text) return jsonResponse(readFixture("slack", "empty_text"));
     return jsonResponse(readFixture("slack", "success"));
+  }
+
+  if (url.startsWith("https://sheets.googleapis.com/v4/spreadsheets/")) {
+    // An empty spreadsheet_id collapses the URL to ".../spreadsheets//values/..." (a real,
+    // recorded response -- Sheets has no missing-field error for this, only a plain 404).
+    if (/\/spreadsheets\/\/values\//.test(url)) return jsonResponse(readFixture("google-sheets", "empty_spreadsheet_id"));
+    return jsonResponse(readFixture("google-sheets", "success"));
   }
 
   throw new Error(`fixtureFetch: no recorded fixture wired for ${url}`);

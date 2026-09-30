@@ -1,0 +1,31 @@
+{
+  "scenario": "missing_sheet",
+  "description": "The requested sheet tab does not exist.",
+  "recorded_at": "2026-09-29",
+  "request_shape": {
+    "spreadsheet_id": "provided",
+    "sheet_name": "provided",
+    "values": "provided"
+  },
+  "response": {
+    "status": 400,
+    "body": {
+      "error": {
+        "code": 400,
+        "message": "Unable to parse range: '[value]'",
+        "status": "INVALID_ARGUMENT"
+      }
+    }
+  },
+  "mapped": {
+    "ok": false,
+    "error": {
+      "code": "http_400",
+      "message": "Unable to parse range: '[value]'",
+      "retryable": false,
+      "outcome": "not_executed",
+      "category_hint": "invalid_value",
+      "field": "sheet_name"
+    }
+  }
+}

@@ -1,0 +1,10 @@
+```json
+{
+  "likely_cause": "The channel field is empty, so Slack cannot find which channel to post to.",
+  "explanation": "The workflow tried to send a message to Slack, but the channel field was left blank. Slack needs to know which channel to use, and without that information, it cannot complete the action.",
+  "selected_candidate_id": "map:channel:backup_channel",
+  "why_this_fix": "This candidate provides a fallback channel value when the original channel field is empty, which may allow the message to be sent to an alternative channel instead of failing.",
+  "confidence": "high",
+  "uncertainty_note": null
+}
+```
