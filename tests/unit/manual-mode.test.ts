@@ -78,6 +78,28 @@ describe("manual mode guidance", () => {
     expect(manualModeTip(category)).toContain(expected);
   });
 
+  it("names the failing field when the rule's evidence identifies one", () => {
+    const evidence = [{ label: "Failing field", value: "Attendee email" }];
+    expect(manualModeTip("missing_required_field", evidence)).toContain('"Attendee email"');
+    expect(manualModeTip("missing_required_field", evidence)).toContain("needs a value");
+  });
+
+  it("includes the expected format when identifying an invalid_format field", () => {
+    const evidence = [
+      { label: "Failing field", value: "Event start" },
+      { label: "Expected format", value: "datetime_rfc3339" },
+    ];
+    const tip = manualModeTip("invalid_format", evidence);
+    expect(tip).toContain('"Event start"');
+    expect(tip).toContain("datetime_rfc3339");
+  });
+
+  it("falls back to the fixed tip when evidence doesn't name a field", () => {
+    const evidence = [{ label: "Connection status", value: "Authentication failed" }];
+    expect(manualModeTip("expired_connection", evidence)).toContain("Reconnect the app");
+    expect(manualModeTip("missing_required_field", undefined)).toContain("form field feeding this setting");
+  });
+
   const render = (reason: ManualModeReason, input: DiagnosisView | null = diagnosis) => renderToStaticMarkup(
     createElement(ManualMode, {
       reason,
@@ -100,6 +122,34 @@ describe("manual mode guidance", () => {
     expect(html).toContain(">Return to workflow editor</button>");
     expect(html).not.toContain('href="/workflows/workflow-1"');
     expect(html).toContain("No change has been made.");
+  });
+
+  it("shows the AI's plain-English explanation when the AI call succeeded", () => {
+    const html = render("no_candidates");
+
+    expect(html).toContain("AI-generated explanation");
+    expect(html).toContain("The attendee email is empty.");
+    expect(html).toContain("The calendar action needs an attendee email.");
+  });
+
+  it("shows the uncertainty note when the AI included one", () => {
+    const html = render("low_confidence", {
+      ...diagnosis,
+      confidence: "low",
+      ai: { ...diagnosis.ai!, confidence: "low", uncertainty_note: "Not fully sure this is the only cause." },
+    });
+
+    expect(html).toContain("Not fully sure this is the only cause.");
+  });
+
+  it("does not show an AI explanation when the AI call failed or there is no diagnosis", () => {
+    expect(render("ai_unavailable", { ...diagnosis, aiStatus: "unavailable" as const, ai: null })).not.toContain(
+      "AI-generated explanation",
+    );
+    expect(render("ai_invalid", { ...diagnosis, aiStatus: "invalid" as const, ai: null })).not.toContain(
+      "AI-generated explanation",
+    );
+    expect(render("repair_limit_reached", null)).not.toContain("AI-generated explanation");
   });
 
   it("fires the return-to-editor callback", () => {

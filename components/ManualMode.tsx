@@ -56,9 +56,18 @@ export function ManualMode({
 
       {diagnosis?.evidence.length ? <EvidenceList items={diagnosis.evidence} /> : null}
 
+      {diagnosis?.aiStatus === "ok" && diagnosis.ai ? (
+        <div aria-label="AI-generated explanation" className="space-y-1 border-l-2 border-neutral-300 pl-3 text-sm">
+          <h4 className="font-medium">AI-generated explanation</h4>
+          <p><strong>Likely cause:</strong> {diagnosis.ai.likely_cause}</p>
+          <p>{diagnosis.ai.explanation}</p>
+          {diagnosis.ai.uncertainty_note ? <p className="text-neutral-600">{diagnosis.ai.uncertainty_note}</p> : null}
+        </div>
+      ) : null}
+
       <section className="space-y-1" aria-labelledby="manual-guidance-heading">
         <h4 id="manual-guidance-heading" className="text-sm font-medium">What you can check</h4>
-        <p className="text-sm">{manualModeTip(diagnosis?.category)}</p>
+        <p className="text-sm">{manualModeTip(diagnosis?.category, diagnosis?.evidence)}</p>
       </section>
 
       <div className="flex flex-wrap items-center gap-3">
