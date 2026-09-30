@@ -30,8 +30,25 @@ const TIPS: Record<Category, string> = {
   unsupported: "The original error is shown above. Check the app's status page, or edit the workflow manually.",
 };
 
-export function manualModeTip(category: Category | undefined): string {
-  return TIPS[category ?? "unsupported"];
+function findEvidence(evidence: DiagnosisView["evidence"] | undefined, label: string): string | undefined {
+  return evidence?.find((item) => item.label === label)?.value;
+}
+
+/**
+ * Falls back to the fixed per-category tip when the rule's evidence doesn't name a field
+ * (expired_connection, unsupported) or evidence isn't available (e.g. repair_limit_reached).
+ */
+export function manualModeTip(category: Category | undefined, evidence?: DiagnosisView["evidence"]): string {
+  const resolvedCategory = category ?? "unsupported";
+  const field = findEvidence(evidence, "Failing field");
+  if (field && resolvedCategory === "missing_required_field") {
+    return `The action field "${field}" needs a value. Go to the workflow editor, make sure the trigger form sends one, and map it here, or map a different field that already has a value.`;
+  }
+  if (field && resolvedCategory === "invalid_format") {
+    const expected = findEvidence(evidence, "Expected format");
+    return `The action field "${field}" received a value in a format the app rejected${expected ? ` (expected: ${expected})` : ""}. Go to the workflow editor and fix the value or its mapping before running again.`;
+  }
+  return TIPS[resolvedCategory];
 }
 
 export function canRetryDiagnosis(reason: ManualModeReason): boolean {
