@@ -24,12 +24,21 @@ test("broken Slack workflow: fails, gets diagnosed, approved, retried, and resto
 
   await signIn(page, slackWorkflowId);
 
+  const runForm = page.getByRole("group", { name: "Test data" });
+  // The server requires every trigger field to be present (even empty) in the submitted data, not
+  // merely absent -- an untouched, never-fill()ed input never enters React state as a key at all,
+  // and fill("") on an already-empty input is a same-value no-op that fires no input event either.
+  // Filling a character then clearing it forces a real change, which is the scenario under test.
+  const channelField = runForm.getByLabel("Channel", { exact: true });
+  await channelField.fill("x");
+  await channelField.fill("");
+  await runForm.getByLabel("Backup channel", { exact: true }).fill("e2e-test-alerts");
+
   // The run form requires every field natively; leaving "Channel" blank is the scenario under
   // test, so validation is turned off for this one submission rather than the field itself.
   await page.locator("form", { has: page.getByRole("button", { name: "Run test" }) }).evaluate(
     (form: HTMLFormElement) => { form.noValidate = true; },
   );
-  await page.getByLabel("Backup channel").fill("e2e-test-alerts");
   await page.getByRole("button", { name: "Run test" }).click();
 
   // The rules' one candidate: remap Channel to the trigger's "Backup channel" field, which had a

@@ -87,7 +87,9 @@ const SLACK_ACTION_CONFIG: ActionConfig = {
  * in tests/fixtures/google-sheets/) that ZapFix's current rules cannot propose a fix for this
  * failure at all, so the recovery loop for Sheets ends in manual mode, not an approved change.
  */
-const SHEETS_TRIGGER_SCHEMA: TriggerSchema = { fields: [] };
+// TriggerSchemaSchema requires at least one field; this one is unused by SHEETS_ACTION_CONFIG
+// (every action field is static below), it only satisfies the run form having something to submit.
+const SHEETS_TRIGGER_SCHEMA: TriggerSchema = { fields: [{ key: "note", label: "Note", type: "text" }] };
 
 const SHEETS_ACTION_CONFIG: ActionConfig = {
   spreadsheet_id: { kind: "static", value: "" },

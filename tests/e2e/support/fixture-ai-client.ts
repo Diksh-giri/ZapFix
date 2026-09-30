@@ -9,7 +9,10 @@ import type { AiClient } from "@/server/diagnosis/ai/client";
  * one fixed answer -- each recording's `selected_candidate_id` must be a real candidate id for
  * that scenario, or diagnosis would reject it as off-list.
  */
-const RECORDINGS_DIR = path.join(__dirname, "..", "..", "..", "evals", "ai-recordings");
+// process.cwd(), not __dirname: this module is imported by server/diagnosis/index.ts, which
+// Next.js bundles into its own server build -- __dirname there points into that build's output,
+// not this source file's real location. The dev server's cwd is reliably the project root.
+const RECORDINGS_DIR = path.join(process.cwd(), "evals", "ai-recordings");
 
 const SCENARIOS: Array<{ marker: string; file: string }> = [
   { marker: "map:attendee_email:contact_email", file: "calendar-empty-attendee-email-one-alternative.txt" },

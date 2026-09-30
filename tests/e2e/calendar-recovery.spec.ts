@@ -25,13 +25,24 @@ test("broken Calendar workflow: fails, gets diagnosed, approved, retried, and re
 
   await signIn(page, calendarWorkflowId);
 
+  // Scoped to the "Test data" group: the field mapper above it also has a control whose
+  // accessible name contains "Title", so an unscoped getByLabel("Title") is ambiguous.
+  const runForm = page.getByRole("group", { name: "Test data" });
+  await runForm.getByLabel("Title", { exact: true }).fill("ZapFix e2e run");
+  // The server requires every trigger field to be present (even empty) in the submitted data, not
+  // merely absent -- an untouched, never-fill()ed input never enters React state as a key at all,
+  // and fill("") on an already-empty input is a same-value no-op that fires no input event either.
+  // Filling a character then clearing it forces a real change, which is the scenario under test.
+  const emailField = runForm.getByLabel("Email", { exact: true });
+  await emailField.fill("x");
+  await emailField.fill("");
+  await runForm.getByLabel("Contact email", { exact: true }).fill("backup@example.com");
+
   // The run form requires every field natively; leaving "Email" blank is the scenario under
   // test, so validation is turned off for this one submission rather than the field itself.
   await page.locator("form", { has: page.getByRole("button", { name: "Run test" }) }).evaluate(
     (form: HTMLFormElement) => { form.noValidate = true; },
   );
-  await page.getByLabel("Title").fill("ZapFix e2e run");
-  await page.getByLabel("Contact email").fill("backup@example.com");
   await page.getByRole("button", { name: "Run test" }).click();
 
   // The rules' one candidate: remap Attendee email to the trigger's "Contact email" field, which

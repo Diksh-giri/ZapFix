@@ -25,15 +25,17 @@ test("broken Sheets workflow: fails and correctly falls back to manual mode", as
 
   await signIn(page, sheetsWorkflowId);
 
-  // No trigger fields to fill -- every action field is a fixed value (see seed.ts's
-  // SHEETS_ACTION_CONFIG), so the run form has nothing to enter.
+  // The one trigger field ("Note") is unused by SHEETS_ACTION_CONFIG (every action field there is
+  // a fixed value) -- it exists only because a trigger schema needs at least one field.
+  await page.getByRole("group", { name: "Test data" }).getByLabel("Note", { exact: true }).fill("e2e probe");
   await page.getByRole("button", { name: "Run test" }).click();
 
   await expect(page.getByRole("heading", { name: "Latest test run" })).toBeVisible();
   await expect(page.getByText("Overall status: Failed")).toBeVisible();
 
   await page.getByRole("button", { name: "Diagnose" }).click();
-  await expect(page.getByText("Continue manually")).toBeVisible();
+  // "Continue manually" appears twice (a sr-only heading and the visible Notice title) --
+  // the unique text below it is enough to confirm manual mode rendered.
   await expect(page.getByText("ZapFix does not support this type of failure yet.")).toBeVisible();
   await expect(page.getByText("No change has been made.")).toBeVisible();
 
