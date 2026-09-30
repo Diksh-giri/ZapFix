@@ -59,6 +59,9 @@ const TRIGGER_SCHEMA: TriggerSchema = {
     { key: "title", label: "Title", type: "text" },
     { key: "email", label: "Email", type: "email" },
     { key: "contact_email", label: "Contact email", type: "email" },
+    // A second real alternative, filled only by the "choose a non-default option" scenario --
+    // the other two scenarios leave it blank, keeping their candidate list at just contact_email.
+    { key: "work_email", label: "Work email", type: "email" },
   ],
 };
 
@@ -135,7 +138,7 @@ async function ownedE2eConnectionId(
   return created.id;
 }
 
-export async function seedCalendarWorkflow(userId: string): Promise<SeededCalendar> {
+export async function seedCalendarWorkflow(userId: string, nameSuffix = ""): Promise<SeededCalendar> {
   const db = client();
   const { key, version } = getTokenKey();
 
@@ -155,7 +158,7 @@ export async function seedCalendarWorkflow(userId: string): Promise<SeededCalend
     .insert(workflows)
     .values({
       userId,
-      name: "e2e: broken Calendar event",
+      name: `e2e: broken Calendar event${nameSuffix ? ` (${nameSuffix})` : ""}`,
       app: "google_calendar",
       actionKey: "create_event",
       connectionId,
@@ -166,6 +169,25 @@ export async function seedCalendarWorkflow(userId: string): Promise<SeededCalend
   if (!workflow) throw new Error("Could not create the e2e Calendar workflow.");
 
   return { workflowId: workflow.id, connectionId };
+}
+
+export interface SeededCalendarScenarios {
+  recovery: SeededCalendar;
+  rejection: SeededCalendar;
+  alternate: SeededCalendar;
+}
+
+/**
+ * Three separate Calendar workflow rows, not one reused across three runs: reusing one would let
+ * proposal/config-version state from an earlier scenario leak into the next (e.g. the reject
+ * scenario's decided proposal, or repair_count) and make cross-test interference possible when
+ * Playwright runs these in the same worker in sequence.
+ */
+export async function seedCalendarScenarios(userId: string): Promise<SeededCalendarScenarios> {
+  const recovery = await seedCalendarWorkflow(userId, "recovery");
+  const rejection = await seedCalendarWorkflow(userId, "rejection");
+  const alternate = await seedCalendarWorkflow(userId, "alternate");
+  return { recovery, rejection, alternate };
 }
 
 export async function seedSlackConnection(userId: string): Promise<{ connectionId: string }> {
@@ -246,7 +268,7 @@ if (require.main === module) {
     console.error("This must be a dedicated e2e/CI test user that has never connected a real Google or Slack account.");
     process.exit(1);
   }
-  seedCalendarWorkflow(userId)
+  seedCalendarScenarios(userId)
     .then((calendar) => seedSheetsWorkflow(userId).then((sheets) => ({ calendar, sheets })))
     .then((result) => seedSlackWorkflow(userId).then((slack) => ({ ...result, slack })))
     .then((result) => {

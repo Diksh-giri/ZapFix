@@ -14,7 +14,11 @@ import type { AiClient } from "@/server/diagnosis/ai/client";
 // not this source file's real location. The dev server's cwd is reliably the project root.
 const RECORDINGS_DIR = path.join(process.cwd(), "evals", "ai-recordings");
 
+// Order matters: "map:attendee_email:contact_email" is present in BOTH the one- and
+// two-candidate Calendar scenarios (work_email being present as a candidate is what distinguishes
+// them), so the more specific two-candidate marker must be checked first.
 const SCENARIOS: Array<{ marker: string; file: string }> = [
+  { marker: "map:attendee_email:work_email", file: "calendar-empty-attendee-email-two-alternatives.txt" },
   { marker: "map:attendee_email:contact_email", file: "calendar-empty-attendee-email-one-alternative.txt" },
   { marker: "map:channel:backup_channel", file: "slack-empty-channel-one-alternative.txt" },
 ];

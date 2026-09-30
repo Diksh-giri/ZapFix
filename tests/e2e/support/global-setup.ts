@@ -1,13 +1,14 @@
 import { existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { seedCalendarWorkflow, seedSheetsWorkflow, seedSlackWorkflow } from "./seed";
+import { seedCalendarScenarios, seedSheetsWorkflow, seedSlackWorkflow } from "./seed";
 
 if (existsSync(".env.local")) process.loadEnvFile(".env.local");
 
 /**
- * Runs once before the e2e suite (T29). Seeds one broken workflow per app for the dedicated e2e
- * test user and writes their ids to a JSON file specs read, since Playwright's global setup can't
- * hand data to tests directly.
+ * Runs once before the e2e suite (T29). Seeds three broken Calendar workflows (one per scenario:
+ * recovery, rejection, alternate-option) plus one Slack and one Sheets workflow, for the dedicated
+ * e2e test user, and writes their ids to a JSON file specs read, since Playwright's global setup
+ * can't hand data to tests directly.
  *
  * Needs E2E_TEST_USER_ID (the Supabase auth user id of a DEDICATED test user that has never
  * connected a real Google or Slack account -- see tests/e2e/support/seed.ts's safety notes) plus
@@ -16,7 +17,9 @@ if (existsSync(".env.local")) process.loadEnvFile(".env.local");
 export const STATE_PATH = path.join(__dirname, "..", ".e2e-state.json");
 
 export interface E2eState {
-  calendarWorkflowId: string;
+  calendarRecoveryWorkflowId: string;
+  calendarRejectionWorkflowId: string;
+  calendarAlternateWorkflowId: string;
   slackWorkflowId: string;
   sheetsWorkflowId: string;
 }
@@ -40,11 +43,13 @@ export default async function globalSetup(): Promise<void> {
 
   // Sequential, not Promise.all: Calendar and Sheets share one Google connection row
   // (connections is unique per user+provider), so seeding them concurrently would race.
-  const calendar = await seedCalendarWorkflow(userId);
+  const calendar = await seedCalendarScenarios(userId);
   const sheets = await seedSheetsWorkflow(userId);
   const slack = await seedSlackWorkflow(userId);
   const state: E2eState = {
-    calendarWorkflowId: calendar.workflowId,
+    calendarRecoveryWorkflowId: calendar.recovery.workflowId,
+    calendarRejectionWorkflowId: calendar.rejection.workflowId,
+    calendarAlternateWorkflowId: calendar.alternate.workflowId,
     slackWorkflowId: slack.workflowId,
     sheetsWorkflowId: sheets.workflowId,
   };
