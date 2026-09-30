@@ -326,6 +326,10 @@ export function RunDetail({
       setApprovalOpen(false);
       setProposalOutdatedRunId(null);
       setRepairLimitState(null);
+      // A fresh diagnosis satisfies "this run needs a new diagnosis after its retry" -- without
+      // clearing it, retryNeedsDiagnosis stays true forever and hides this exact diagnosis (the
+      // one that was just fetched to answer it), showing nothing when the new error has no fix.
+      setRetryOutcomeState(null);
     } catch (caught) {
       if (caught instanceof RunRequestError && caught.code === "repair_limit_reached") {
         setRepairLimitState({ runId, reached: true });
