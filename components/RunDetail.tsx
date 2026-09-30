@@ -299,7 +299,13 @@ export function RunDetail({
 
   useEffect(() => {
     const diagnosisId = state.view?.latestDiagnosisId;
-    if (!diagnosisId || diagnosis?.id === diagnosisId) return;
+    // Only fills in a MISSING diagnosis (e.g. navigating to a run that already has one from a
+    // prior session) -- never re-syncs once we already have one for this run. state.view is the
+    // polled run snapshot, which lags behind a just-fetched diagnose() result (nothing refreshes
+    // it immediately after); matching on `diagnosis?.id` instead of "do we have any diagnosis at
+    // all" made this effect overwrite a fresh diagnosis with the stale pre-retry one the moment it
+    // loaded, because state.view hadn't caught up yet.
+    if (!diagnosisId || diagnosis) return;
     let cancelled = false;
     void loadDiagnosis(diagnosisId)
       .then((loaded) => {
@@ -314,7 +320,7 @@ export function RunDetail({
         if (!cancelled) setActionError(explainActionError(caught, "The diagnosis could not be loaded."));
       });
     return () => { cancelled = true; };
-  }, [diagnosis?.id, runId, state.view?.latestDiagnosisId]);
+  }, [diagnosis, runId, state.view?.latestDiagnosisId]);
 
   const diagnose = () => actionRunner.current(async () => {
     setBusy("diagnose"); setActionError(null);
@@ -326,6 +332,10 @@ export function RunDetail({
       setApprovalOpen(false);
       setProposalOutdatedRunId(null);
       setRepairLimitState(null);
+      // A fresh diagnosis satisfies "this run needs a new diagnosis after its retry" -- without
+      // clearing it, retryNeedsDiagnosis stays true forever and hides this exact diagnosis (the
+      // one that was just fetched to answer it), showing nothing when the new error has no fix.
+      setRetryOutcomeState(null);
     } catch (caught) {
       if (caught instanceof RunRequestError && caught.code === "repair_limit_reached") {
         setRepairLimitState({ runId, reached: true });
