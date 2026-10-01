@@ -81,6 +81,22 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     deliberatelyBroken: true,
   },
   {
+    id: "gmail-missing-recipient",
+    name: "Gmail: missing recipient",
+    description:
+      "Deliberately broken: the recipient is empty, which Gmail rejects (the same shape as the recorded real " +
+      "fixture). Use it to see ZapFix explain and offer to fix a missing required field on a different app.",
+    app: "gmail",
+    actionKey: "send_email",
+    triggerSchema: DEFAULT_TRIGGER,
+    actionConfig: {
+      to: { kind: "static", value: "" },
+      subject: { kind: "static", value: "ZapFix template email" },
+      body: { kind: "static", value: "This is a test email sent by a ZapFix template." },
+    },
+    deliberatelyBroken: true,
+  },
+  {
     id: "slack-valid",
     name: "Post a Slack message",
     description: "A working example: posts a real message to your connected test channel.",

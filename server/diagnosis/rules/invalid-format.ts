@@ -1,5 +1,6 @@
 import type { Transform } from "@/lib/schemas/workflow-config";
 import { maskQuotedValues, shapeOf, type ValueShape } from "@/server/diagnosis/ai/payload";
+import { dateToRfc3339 } from "@/server/workflows/resolve";
 import type { Candidate, Evidence, RuleInput, RuleMatch } from "./types";
 
 /**
@@ -47,19 +48,38 @@ export function matchInvalidFormat(input: RuleInput): RuleMatch | null {
       ? (DATE_FORMATS_FOR[valueShape] ?? []).filter((format) => isValidDate(resolved[fieldKey] ?? "", format))
       : [];
   const candidates: Candidate[] =
-    mapping.kind === "mapped" && valueShape !== "empty"
-      ? formats.map((fromFormat) => ({
-          id: `transform:${fieldKey}:${fromFormat}`,
-          kind: "config_change" as const,
-          fieldPath: `actionConfig.${fieldKey}`,
-          proposedValue: {
-            kind: "mapped" as const,
-            source: mapping.source,
-            transform: { kind: "date_to_rfc3339" as const, fromFormat, timeZone: "UTC" },
-          },
-          description: `Convert ${actionField.label} from ${fromFormat} to RFC 3339`,
-        }))
-      : [];
+    valueShape === "empty"
+      ? []
+      : formats.flatMap((fromFormat): Candidate[] => {
+          if (mapping.kind === "mapped") {
+            return [
+              {
+                id: `transform:${fieldKey}:${fromFormat}`,
+                kind: "config_change" as const,
+                fieldPath: `actionConfig.${fieldKey}`,
+                proposedValue: {
+                  kind: "mapped" as const,
+                  source: mapping.source,
+                  transform: { kind: "date_to_rfc3339" as const, fromFormat, timeZone: "UTC" },
+                },
+                description: `Convert ${actionField.label} from ${fromFormat} to RFC 3339`,
+              },
+            ];
+          }
+          // A fixed (static) value has nowhere to carry a transform, so the fix converts the
+          // value itself once, here, using the same date_to_rfc3339 logic resolve.ts uses live.
+          const converted = dateToRfc3339(resolved[fieldKey] ?? "", fromFormat, "UTC");
+          if (!converted) return [];
+          return [
+            {
+              id: `fix-static:${fieldKey}:${fromFormat}`,
+              kind: "config_change" as const,
+              fieldPath: `actionConfig.${fieldKey}`,
+              proposedValue: { kind: "static" as const, value: converted },
+              description: `Convert ${actionField.label} from ${fromFormat} to RFC 3339`,
+            },
+          ];
+        });
 
   const evidence: Evidence[] = [
     { label: "App error", value: `${error.code}: ${maskQuotedValues(error.message)}` },

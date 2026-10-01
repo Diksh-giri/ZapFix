@@ -50,6 +50,30 @@ describe("missing required field rule (worked example, T13)", () => {
     const c = classify(await inputFor({ name: "Kickoff", email: "", meeting_date: "03/15/2026" }));
     expect(c.candidates).toEqual([]); // the date field is not an email field
   });
+
+  it("also fires on a fixed (static) empty value, not just a mapped-but-blank one", async () => {
+    // Templates like "Calendar: missing attendee email" leave the field as a static empty
+    // value rather than mapping it, so the rule must recognize this shape too.
+    const c = classify(
+      await inputFor(
+        { name: "Kickoff", email: "ana@example.com" },
+        { ...config, attendee_email: { kind: "static", value: "" } },
+      ),
+    );
+    expect(c.category).toBe("missing_required_field");
+    expect(c.candidates.map((x) => x.id)).toEqual(["map:attendee_email:email"]);
+    expect(c.candidates[0]?.proposedValue).toEqual({ kind: "mapped", source: "email" });
+    expect(c.ceiling).toBe("high");
+  });
+
+  it("does not fire when the fixed value is not actually empty", async () => {
+    const cfg: ActionConfig = { ...config, attendee_email: { kind: "static", value: "fixed@example.com" } };
+    const input = await inputFor({ name: "", email: "ana@example.com" }, cfg); // real failure is on title, not attendee_email
+    input.config = cfg;
+    input.error = { ...input.error, category_hint: "missing_field", field: "attendee_email" };
+    const c = classify(input);
+    expect(c.category).toBe("unsupported"); // a non-empty fixed value is not this problem
+  });
 });
 
 describe("invalid format rule", () => {
@@ -147,6 +171,20 @@ describe("invalid format rule", () => {
     expect(c.category).toBe("unsupported");
     expect(c.candidates).toEqual([]);
     expect(c.ceiling).toBe("low");
+  });
+
+  it("also fixes a fixed (static) badly formatted date, not just a mapped one", async () => {
+    // "Calendar: wrong date format" leaves start as a static "03/15/2030" value rather than
+    // mapping it to a trigger field, so the rule must offer a fix for that shape too.
+    const input = await inputFor(
+      { name: "Kickoff", email: "ana@example.com" },
+      { ...config, start: { kind: "static", value: "03/15/2030" } },
+    );
+    const c = classify(input);
+    expect(c.category).toBe("invalid_format");
+    expect(c.candidates.map((candidate) => candidate.id)).toEqual(["fix-static:start:MM/DD/YYYY"]);
+    expect(c.candidates[0]?.proposedValue).toEqual({ kind: "static", value: "2030-03-15T00:00:00Z" });
+    expect(c.ceiling).toBe("high");
   });
 
   it("masks values echoed by an app before adding them to evidence", async () => {
